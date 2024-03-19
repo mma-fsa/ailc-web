@@ -1,0 +1,575 @@
+---
+title: "Adventures in Low Credibility"
+author: "Mike McPhee Anderson, FSA"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    highlight: kate
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+<style>
+.table-wrapper {
+  background: #F7F7F7 !important;
+  color: black !important;
+}
+</style>
+
+## Overview
+
+There are few practical guides for actuarial data science, although there are some 
+textbook quality resources listed at the bottom under [*Additional Resources*](#additional-resources).
+This short guide is a collection of techniques designed to bridge the gap 
+between theory and practice.
+
+The data used in this guide is real mortality data from the [SOA's ILEC Experience](). It contains about 11.7K claims between 
+years 2009 and 2018, and is two-class and smoker distinct perm business issued between 1981 and 2000.  We'll pretend that
+our company has assumed or acquired this business, and there is a desire to develop a new mortality basis from scratch.
+
+## Setup
+
+Load [rpart]() and [tidyverse]().
+
+```{r warning=F, message=F}
+
+load_pkgs <- function(pkgs) {
+  for (p in pkgs) {
+    if (!require(p, character.only = TRUE)) {
+      install.packages(p, quiet = T)
+      require(p, character.only = TRUE)
+    }  
+  }
+}
+
+load_pkgs(c("rpart", "rpart.plot", "knitr", "kableExtra", "tidyverse"))
+
+```
+
+### Load Experience
+
+There are 11.7K claims total, with 8K in the training set, and 3.7K in the 
+testing (holdout) set.  
+
+* The train / test split is performed on *Calendar Year*,
+with years 2009-2016 in the training set and years 2017-2019 in the test set. You 
+may be wondering, why split on Calendar Year? See [Methodology Note 1](). 
+
+* See the [Overview](#overview) for additional recap of this data.
+
+
+```{r}
+
+# load data
+perm_experience <- readRDS("./data/perm_experience.rds") %>%
+  filter(Policies_Exposed > 0 )
+
+# partition into train / test
+perm_experience.train <- perm_experience %>% filter(training_set == 1)
+perm_experience.test <- perm_experience %>% filter(training_set == 0 )
+
+# create summary
+perm_experience %>%
+  mutate(Cohort_Name = ifelse(training_set, "Train", "Test")) %>%
+  group_by(Cohort_Name, Gender, Smoker_Status, Preferred_Class) %>%
+  summarise(
+    `Total Claims` = sum(Number_Of_Deaths),
+    .groups="drop"
+  ) %>%
+  arrange(desc(Cohort_Name), desc(Gender), Smoker_Status, Preferred_Class) %>%
+  kable(digits=0, caption="Claim Experience Summary") %>%
+  kable_styling()
+
+
+```
+
+### Load the VBT Tables
+
+The `vbt_tables` data contains the 2001, 2008, and 2015 VBT tables,
+about 147 in total.
+
+* With 8K claims in the training set, we don't have quite enough data to develop
+our assumptions only from the data.  We'll use the time-honored technique
+of starting with an industry table, but with a statistical twist discussed later.
+
+* Since the 2015 VBT table is developed using the ILEC experience, we'll limit 
+ourselves to 2001 and 2008 tables (to avoid data leakage).
+
+```{r}
+
+# load about 147 SOA 
+vbt_tables <- readRDS("./data/vbt_tables.rds")
+
+```
+
+
+## Base Table Selection
+
+Typically, actuaries will apply a combination of judgement and *Actual to Expected (A/E) analysis* 
+to identify a suitable industry table to use as a starting point.  
+
+* [Industry tables](http://mort.soa.org) are developed on a very large population of 
+similar lives (i.e. fully credible), and provide the model with important hints about
+the shape of the mortality curve, especially in areas where data is very thin. From 
+a statistical perspective, this is quite close to a prior distribution.
+
+* Typically, a table is selected by finding one where $\text{Actual Claims} \div \text{Expected Claims} \approx 100\%$,
+The expected claims are computed using $\text{Exposure} \times q_x$, with the $q_x$ value is provided by the industry
+table.
+
+  * The weakness of A/E analysis is that **two big errors can cancel out**.  If we are over-predicting deaths at older
+ages, and under-predicting and younger, we very well could end up close to 100% overall.
+
+* So what's the alternative to A/E analysis?  In actuarial terms, what if we could find a technique that:
+
+  1. Works at the most granular level (cell level).
+  
+  2. Is credibility aware, so that small differences in very credible cells are correctly evaluated against large differences in cells with low credibility.  
+  
+  3. Mismatches will never cancel out.
+  
+  4. Is simple enough to do in Excel?
+  
+Sounds great right?  The measure that satisfies the above properties is simply *probability*, i.e. finding the most likely table.  See Methodology Note 3 for more details.
+  
+### Most Likely Table Selection
+
+Our table selection still requires judgement. We don't want to evaluate probabilities
+from smokers tables for the non-smoking population, or males for females, etc. The
+below code uses a mapping to restrict the combinations to the ones that make sense.
+
+* The below code creates this mapping. 
+
+```{r}
+
+# limit the tables to 2001 & 2008 vbt
+vbt_table_versions <- c("2001 vbt", "2008 vbt")
+
+# try both alb and anb bases
+alb_anb_filter <- c("alb", "anb")
+
+# map the 'Smoker' class in the experience to the 'smoker' and 'sm' tables
+# map the 'Non-smoker' class in the experience to 'non-smoker', 'nonsmoker' and 'ns'
+smoker_filter <- list(
+  "Smoker" = c("smoker", "sm"),
+  "NonSmoker" = c("non-smoker", "nonsmoker", "ns")
+)
+
+# map Males and Females to the respective tables
+gender_filter <- list(
+  "Male" = c("male"),
+  "Female" = c("female")
+)
+
+```
+
+
+Convert the above mappings into a *join table* that can be used to connect the 
+experience with the correct vbt tables.  
+
+ * The columns prefixed with vbt will be joined to the `vbt_tables` dataframe.
+ 
+ * The columns prefixed with exp will be joined to the `perm_experience` dataframe.
+
+| vbt_table_version | vbt_alb_anb | vbt_smoker | vbt_gender | exp_smoker | exp_gender | 
+| ----------------- | ----------- | ---------- | ---------- | ---------- | ---------- |
+| vbt_2008          | alb         | smoker     | male       | Smoker     | Male       |
+| vbt_2001          | alb         | smoker     | male       | Smoker     | Male       |
+| vbt_2008          | anb         | smoker     | male       | Smoker     | Male       |
+| vbt_2001          | anb         | smoker     | male       | Smoker     | Male       |
+| ........          | ...         | ......     | ....       | ......     | ...        |
+| vbt_2001          | anb         | ns         | female     | NonSmoker  | Female     |
+
+
+```{r}
+
+experience_join_table <- NULL
+
+for (smoker_status in names(smoker_filter)) {
+  for (gender in names(gender_filter)) {
+    
+    table_part <- expand.grid(
+      vbt_table_version = vbt_table_versions,
+      vbt_alb_anb = alb_anb_filter,
+      vbt_smoker = smoker_filter[[smoker_status]],
+      vbt_gender = gender_filter[[gender]],
+      exp_smoker = smoker_status,
+      exp_gender = gender
+    )
+    
+    if (is.null(experience_join_table)) {
+      experience_join_table <- table_part
+    } else {
+      experience_join_table <- rbind(
+        experience_join_table,
+        table_part)
+    }
+  }
+}
+
+```
+
+
+Using the above mapping, connect the experience to each vbt table and compute
+the likelihood. 
+
+ * The typical likelihood measure used in actuarial science for claims frequency is the Poisson Distribution. See Methodology Note 3 for more details.
+
+```{r}
+
+likelihood_calc <- suppressWarnings({
+ perm_experience.train %>%
+  # connect the experience with the join table
+  inner_join(
+    experience_join_table, 
+    by=c("Smoker_Status" = "exp_smoker", "Gender" = "exp_gender")) %>%
+  # connect the experience to the vbt_tables
+  inner_join(
+    vbt_tables,
+    by=c(
+      "vbt_table_version" = "table_version",
+      "vbt_alb_anb" = "alb_anb",
+      "vbt_smoker" = "smoker",
+      "vbt_gender" = "sex",
+      "Issue_Age" = "issue_age",
+      "Attained_Age" = "attained_age"
+    )) %>% 
+  # group within each vbt table / experience & calendar year
+  group_by(
+    vbt_table_version,
+    vbt_alb_anb,
+    vbt_smoker,
+    vbt_gender,
+    tbl_name,
+    Calendar_Year,
+    Smoker_Status,
+    Gender,
+    Preferred_Class
+  ) %>%
+  # compute the poisson log likelihood
+  mutate(
+    exp_claims = qx * Policies_Exposed,
+    log_likelihood = dpois(Number_Of_Deaths, exp_claims, log=T)
+  ) %>%
+  summarise(
+    ll = sum(log_likelihood),
+    total_claims = sum(Number_Of_Deaths),
+    exp_claims = sum(exp_claims),
+    ae = total_claims / exp_claims,
+    .groups = "drop"
+  )
+})
+
+# check that we haven't duplicated any claims
+likelihood_calc %>%
+  group_by(
+    Gender,
+    Smoker_Status,
+    Preferred_Class,
+    vbt_table_version,
+    vbt_alb_anb,
+    tbl_name) %>%
+  summarise(
+    total_claims = sum(total_claims),
+    .groups="drop"
+  ) %>%
+  head(1) %>%
+  t() %>%
+  as.data.frame() %>%
+  rownames_to_column() %>%
+  select(
+    Field = rowname,
+    Value = V1
+  ) %>%
+  kable(caption = "Spot-check for duplicates") %>%
+  kable_styling()
+
+```
+
+
+We'll use something similar to cross-validation to choose the best table for each experience
+cohort.  By holding out one calendar year for each table, we can ensure that the most likely
+table is consistent even when one year is removed.
+
+ * Things like a particulary bad flu season, or 1 in 100 mortality event might skew mortality.
+ 
+ * Each iteration of the below loop works like a "vote" for the best mortality table for a given cohort,
+ if there is a strong consensus (a table appearing a majority of the time), then we can gain some confidence
+ that the results aren't skewed by one-time mortality events (proxied via Calendar year).
+ 
+
+```{r fig.width=8}
+
+# create a list of the years in the training set
+holdout_years <- perm_experience.train %>%
+  select(Calendar_Year) %>%
+  distinct() %>%
+  collect() %>%
+  arrange(Calendar_Year) %>%
+  pull(Calendar_Year)
+
+# keep the overall A/E of the holdout year (across all sex / smokers)
+# in a vector to estimate the out-of-sample error later
+holdout_years_ae <- c()
+
+# this will hold the results of the join
+all_vbt_rankings <- NULL
+
+# run the cross-validation like procedure
+for (holdout_yr in holdout_years) {
+
+    # compute the log-likelihood for each cell after
+    # holding out a single calendar year
+    vbt_rankings <- likelihood_calc %>%
+      filter(Calendar_Year != !!holdout_yr) %>%
+      group_by(
+        vbt_table_version,
+        vbt_alb_anb,
+        vbt_smoker,
+        vbt_gender,
+        tbl_name,
+        Smoker_Status,
+        Gender,
+        Preferred_Class
+      ) %>%
+      summarise(
+        ll = sum(ll),
+        .groups="drop"
+      ) %>%
+      group_by(
+        Smoker_Status,
+        Gender,
+        Preferred_Class
+      ) %>%
+      mutate(
+        rank = row_number(desc(ll))
+      ) %>%
+      arrange(rank)
+
+    # find the best table (maximum likelihood)
+    best_table <- vbt_rankings %>%
+      filter(rank == 1)
+
+    # compute the actual-to-expected on the holdout set
+    holdout_ae <- likelihood_calc %>%
+      filter(Calendar_Year == holdout_yr) %>%
+      inner_join(best_table %>%
+                   select(-c(ll:rank)), by=c(
+        "vbt_table_version",
+        "vbt_alb_anb",
+        "vbt_smoker",
+        "vbt_gender",
+        "tbl_name",
+        "Smoker_Status",
+        "Gender",
+        "Preferred_Class"
+      )) %>%
+      group_by(1) %>%
+      summarise(
+        total_claims = sum(total_claims),
+        exp_claims = sum(exp_claims),
+        ae = total_claims / exp_claims,
+        .groups="drop"
+      ) %>%
+      pull(ae)
+
+    # keep the A/E in the holdout year for the final plot
+    holdout_years_ae <- c(
+      holdout_years_ae,
+      holdout_ae
+    )
+
+    # append the record of the best tables
+    if (is.null(all_vbt_rankings)) {
+      all_vbt_rankings <- best_table
+    } else {
+      all_vbt_rankings <- rbind(
+        all_vbt_rankings,
+        best_table
+      )
+    }
+}
+
+rm(best_table)
+
+plot_data <- tibble(
+  `Holdout Year` = holdout_years,
+  `A/E` = holdout_years_ae
+)
+
+ggplot(plot_data, aes(x=`Holdout Year`, y=`A/E`)) +
+  geom_line() +
+  scale_y_continuous(
+    trans=scales::pseudo_log_trans(), 
+    labels = scales::percent_format()) +
+  theme_minimal() +
+  ggtitle(sprintf("Holdout Year A/E (%.1f%% average)", 100*mean(holdout_years_ae)), 
+          "Expected = Maximum Likelihood VBT Table") +
+  geom_hline(yintercept = 1, color="red")
+
+
+```
+
+Using the likelihood calcs (one for each holdout year and cohort), see if there is a
+clear concensus.  The below chart shows the most likely table for each of the 8 folds (holdout years).
+
+ * The only cell without a clear majority is the *Non-Smoker Females, UW Class #2*.  In real-life, we'd probably create a tie-breaker criterion, but here we'll just pick one, and count on the subsequent model to make the correct adjustments.
+
+```{r fig.width=8}
+
+plot_data <- all_vbt_rankings %>%
+  mutate(
+    tbl_name = paste0(vbt_table_version, " ", vbt_alb_anb, " ", tbl_name),
+    cell_name = interaction(Smoker_Status, Gender, Preferred_Class)
+  )
+
+suppressWarnings({
+  ggplot(plot_data, aes(x=tbl_name)) +
+    geom_histogram(stat="count") + 
+    facet_wrap(~ cell_name, scales="free", ncol=2) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+    ) + 
+    coord_flip() +
+    theme_minimal() +
+    xlab("VBT Table") + 
+    ylab("Number of Maximum Likelihood Votes") +
+    ggtitle("Results of maximum likelihood cross-validation")
+})
+
+```
+
+Pick the best table based on the most votes from the maximum likelihood procedure. 
+
+```{r warning=F, message=F}
+
+best_vbt_table <- all_vbt_rankings %>%
+  group_by(vbt_table_version, vbt_smoker, vbt_gender, vbt_alb_anb,
+           tbl_name, Smoker_Status, Gender, Preferred_Class) %>%
+  summarise(
+    tbl_count = n()
+  ) %>%
+  group_by(
+    Smoker_Status, Gender, Preferred_Class
+  ) %>%
+  arrange(desc(tbl_count)) %>%
+  mutate(
+    most_common = row_number()
+  ) %>%
+  filter(most_common == 1) %>%
+  select(-tbl_count, -most_common)
+
+best_vbt_table %>%
+  mutate(
+    `Best Table` = paste0(
+      vbt_table_version, " ", vbt_alb_anb,
+      " ", tbl_name
+    )
+  ) %>%
+  select(Gender, Smoker_Status, Preferred_Class, `Best Table`) %>%
+  arrange(Gender, Smoker_Status, Preferred_Class) %>%
+  kable(caption="Final Table Selection") %>%
+  kable_styling() 
+
+
+```
+
+### Apply the mappings to the training & testing set
+
+Create two new dataframes `model_data.train` and `model_data.test`:
+
+ * Apply the VBT table mappings that we developed above to create a *Expected Claims* column.
+ 
+ * Convert the face amount bands to an ordered factor called face_amount_band. 
+
+```{r}
+
+apply_vbt_tables <- function(df, table_mapping) {
+ df %>%
+  # connect the experience with the join table
+  inner_join(
+    experience_join_table, 
+    by=c("Smoker_Status" = "exp_smoker", "Gender" = "exp_gender")) %>%
+  # connect the experience to the vbt_tables
+  inner_join(
+    vbt_tables %>% inner_join(table_mapping),
+    by=c(
+      "vbt_table_version" = "table_version",
+      "vbt_alb_anb" = "alb_anb",
+      "vbt_smoker" = "smoker",
+      "vbt_gender" = "sex",
+      "Issue_Age" = "issue_age",
+      "Attained_Age" = "attained_age"
+    )) 
+}
+
+
+
+sum(perm_experience.train$Number_Of_Deaths)
+
+```
+
+
+### Plot Experience vs. Best Tables
+
+```{r}
+
+plot_data <- likelihood_calc %>%
+  inner_join(
+    best_vbt_table 
+  ) %>%
+  mutate(
+    cohort_name = interaction(
+      Gender,
+      Smoker_Status,
+      Preferred_Class,
+      vbt_alb_anb)
+  ) %>%
+  group_by(
+    tbl_name,
+    cohort_name,
+    Attained_Age,
+    vbt_alb_anb
+  ) %>%
+  summarise(
+    total_claims = sum(Number_Of_Deaths),
+    exp_claims = sum(Policies_Exposed * qx),
+    .groups = "drop"
+  ) %>%
+  ungroup()
+
+ggplot(plot_data, aes(x=Attained_Age, y=exp_claims, color=tbl_name, group=tbl_name)) +
+  geom_line() +
+  facet_wrap(~ cohort_name, scales="free_y") +
+  theme(
+    legend.position = "none"
+  ) + 
+  geom_line(
+    aes(y=total_claims), color="black"
+  )
+
+
+```
+
+
+### Plot Experience vs. Best Tables
+
+```{r}
+
+```
+
+## Model
+
+## Appendix
+
+### Methodology Note 1
+
+### Methodology Note 2
+
+### Methodology Note 3
+
+### Additional Resources
