@@ -13,7 +13,13 @@ output:
 knitr::opts_chunk$set(cache = TRUE)
 ```
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
 <style>
+body {
+  font-family: "Roboto", sans-serif !important;
+}
 .table-wrapper {
   background: #F7F7F7 !important;
   color: black !important;
@@ -407,6 +413,7 @@ ggplot(plot_data, aes(x=`Holdout Year`, y=`A/E`)) +
     trans=scales::pseudo_log_trans(), 
     labels = scales::percent_format()) +
   theme_minimal() +
+  ylab("Actual-to-Expected") +
   ggtitle(sprintf("Holdout Year A/E (%.1f%% average)", 100*mean(holdout_years_ae)), 
           "Expected = Maximum Likelihood VBT Table") +
   geom_hline(yintercept = 1, color="red")
@@ -486,42 +493,96 @@ Create two new dataframes `model_data.train` and `model_data.test`:
  
  * Convert the face amount bands to an ordered factor called face_amount_band. 
 
-```{r}
+```{r warning=F}
 
-apply_vbt_tables <- function(df, table_mapping) {
+prepare_modeling_data <- function(df, table_mapping) {
  df %>%
   # connect the experience with the join table
   inner_join(
-    experience_join_table, 
-    by=c("Smoker_Status" = "exp_smoker", "Gender" = "exp_gender")) %>%
-  # connect the experience to the vbt_tables
+    best_vbt_table,
+    by=c("Smoker_Status", "Gender", "Preferred_Class")
+  ) %>%
   inner_join(
-    vbt_tables %>% inner_join(table_mapping),
-    by=c(
-      "vbt_table_version" = "table_version",
-      "vbt_alb_anb" = "alb_anb",
-      "vbt_smoker" = "smoker",
-      "vbt_gender" = "sex",
-      "Issue_Age" = "issue_age",
-      "Attained_Age" = "attained_age"
-    )) 
+    vbt_tables,
+    by=c("vbt_table_version"="table_version",
+         "vbt_smoker"="smoker",
+         "vbt_gender"="sex",
+         "vbt_alb_anb"="alb_anb",
+         "tbl_name"="tbl_name",
+         "Issue_Age"="issue_age",
+         "Attained_Age"="attained_age")) %>%
+    mutate(
+      Face_Amount_Band = stringr::str_trim(Face_Amount_Band),
+      Face_Amount = case_when(
+           Face_Amount_Band == "1-9999" ~ 5000,
+           Face_Amount_Band == "10000-24999" ~ 17500,
+           Face_Amount_Band == "25000-49999" ~ 37500,
+           Face_Amount_Band == "50000-99999" ~ 75000,
+           Face_Amount_Band == "100000-249999" ~ 175000,
+           Face_Amount_Band == "250000-499999" ~ 375000,
+           Face_Amount_Band == "500000-999999" ~ 750000,
+           Face_Amount_Band == "1000000-2499999" ~ 1750000,
+           Face_Amount_Band == "2500000-4999999" ~ 3750000,
+           Face_Amount_Band == "5000000-9999999" ~ 7500000,
+           Face_Amount_Band == "10000000+" ~ 15000000),
+      Face_Amount_Band = factor(Face_Amount_Band,
+                           levels = c(
+                             "1-9999",
+                             "10000-24999",
+                             "25000-49999",
+                             "50000-99999",
+                             "100000-249999",
+                             "250000-499999",
+                             "500000-999999",
+                             "1000000-2499999",
+                             "2500000-4999999",
+                             "5000000-9999999",
+                             "10000000+"
+                           ), ordered = T),
+      Expected_Deaths = Policies_Exposed * qx)
 }
 
+model_data.train <- perm_experience.train %>% 
+  prepare_modeling_data(best_vbt_table)
 
+model_data.test <- perm_experience.test %>%
+  prepare_modeling_data(best_vbt_table)
 
-sum(perm_experience.train$Number_Of_Deaths)
+tibble(
+  Dataset = c("model_data.train", "model_data.test", "perm_experience"),
+  `Number of Deaths` = c(
+    sum(model_data.train$Number_Of_Deaths),
+    sum(model_data.test$Number_Of_Deaths),
+    sum(perm_experience$Number_Of_Deaths)
+  ),
+  `Expected Number of Deaths (Best VBT Table)` = c(
+    round(sum(model_data.train$Expected_Deaths), 0),
+    round(sum(model_data.test$Expected_Deaths), 0),
+    NA
+  ),
+  `Number of Exposures` = c(
+    round(sum(model_data.train$Policies_Exposed), 0),
+    round(sum(model_data.test$Policies_Exposed), 0),
+    round(sum(perm_experience$Policies_Exposed), 0)
+  )
+) %>% 
+  kable(caption="check modeling data frame") %>%
+  kable_styling()
 
 ```
 
 
 ### Plot Experience vs. Best Tables
 
+The below plots compare the selected VBT tables to the actual number of claims. The expected number of claims is calculated as $q_x^{vbt} \times \text{exposure}$.  Purely on an attained age basis, the fit looks good.  We'd expect the black line to wiggly randomly on either side of the expected claims line, and not be biased above or below the line.  With this in mind, a few things stand out.
+
+ * Standard (2) Male Smokers look low between ages 60 and 80.
+ 
+ * Preferred (1) Female Non-smokers also look low between 60 and 80.
+
 ```{r}
 
-plot_data <- likelihood_calc %>%
-  inner_join(
-    best_vbt_table 
-  ) %>%
+plot_data <- model_data.train %>%
   mutate(
     cohort_name = interaction(
       Gender,
@@ -545,24 +606,190 @@ plot_data <- likelihood_calc %>%
 ggplot(plot_data, aes(x=Attained_Age, y=exp_claims, color=tbl_name, group=tbl_name)) +
   geom_line() +
   facet_wrap(~ cohort_name, scales="free_y") +
-  theme(
-    legend.position = "none"
-  ) + 
   geom_line(
     aes(y=total_claims), color="black"
-  )
+  ) +
+  ggtitle("VBT Table (Expected) vs. Actual Claims", "Black line is actuals") +
+  ylab("Claim Count") +
+  xlab("Attained Age") +
+  theme_minimal() +
+  theme(
+    legend.position="bottom"
+  ) +
+  guides(color=guide_legend(title="VBT Table:"))
 
 
 ```
 
+## Model
 
-### Plot Experience vs. Best Tables
+### Inferential Modeling
+
+Typically, one might start with some plots and tables to gather intuition as to
+how to build the model, which will make adjustments on top of the VBT Tables.  The
+drawback of this approach is [confirmation bias](https://en.wikipedia.org/wiki/Confirmation_bias),
+in other words, we will probably find patterns that we already think are there.
+
+ * In the above plot, we noticed that two sex and underwriting class combinations
+ have a mismatch.  But is this the best explanation?  Perhaps these underwriting classes
+ have a disproportionate amount of low face amounts, or were issued the longest time ago,
+ so that the protective effects of underwriting have worn off more than other classes.
+ 
+Instead, we'll use a decision tree to look for patterns.  In particular, the decision
+tree finds the pattern that *creates the largest A/E split, while also considering credibility*.
+You read the tree from top to bottom. This will make more sense after we look at an example.  
+
+Here is a guide to decision tree plots, which is also shown in an equivalent tabular below the plot.
+
+ * In each of the circular boxes (called *nodes*), there are three rows of numbers
+ 
+   * The topmost row is the $\text{Actual Number of Claims} \div \text{Expected Claims}$, with the expecteds based on the VBT table.
+   
+   * The second row contains two numbers, separated by a slash.  The first number is the number of claims in that node, and the second number is the poisson deviance, which I don't find particulary useful.
+   
+   * The third row contains the percent of the input rows that fall into that node.  This gives you a sense of when the data is getting thin as you go further down the tree.
+   
+ * Below each node is a split (decision) and the criterion.  For example, the first split taken is based on the Face_Amount less than \$56.2K or greater than \$56.2K.
+
+
+```{r fig.width=8}
+
+options(scipen = 999)
+
+rpart_model <- rpart(
+  as.matrix(model_data.train[,c("Expected_Deaths","Number_Of_Deaths")]) ~ 
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class + 
+    Smoker_Status + Face_Amount,
+    data=model_data.train,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3)) 
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
+
+**Tabular form of decision tree, first three rows**
+
+|Description|A/E|Number of Claims|% of Data|
+|-----------|-----------|-----------|-----------|
+|**Top Row**|95.4%|7,975|100.0%|
+|---|
+|**Second Row**|
+|Face Amount >= 56.2K|89.3%|4,801|71.8%|
+|Face Amount < 56.2K|106.0%|3,174|28.2%|
+|*Subtotal*|95.4%|7,975|100.0%|
+|---|
+|**Third Row**|
+|Face Amt >= 56.2K and Attained Age < 86|85.9%|3,824|67.8%|
+|Face Amt >= 56.2K and Attained Age >= 86|106.0%|977|04.1%|
+|Face Amt < 56.2K and Attained Age >= 68|102.0%|2,550|13.5%|
+|Face Amt < 56.2K and Attained Age < 68|129.0%|624|14.7%|
+|*Subtotal*|95.4%|7,975|100.0%|
+
+Using the decision tree, **Face Amount** stands out as the first feature we should add to the model,
+followed by **Attained Age**.  Since the Attained Age and face do not create
+a uniform A/E difference, and interaction might be necessary.  To get a sense
+of which way to go (interaction or independent terms), we could use a plot.  
+Alternatively, we might build a glm and check the AIC.  Here we'll do both.  
+
+#### Plot-based check for Attained Age vs. Face Amount Interaction
+
+Since the lines in the below plot are not parallel, it provides evidence for 
+an interaction between attained age and face amount. 
+
+```{r warning=FALSE, message=FALSE, fig.width=8}
+
+plot_data <- model_data.train %>%
+  mutate(
+    Face_Group = ifelse(
+      Face_Amount < 56200, 
+      "<56.2K",
+      ">56.2K")) %>%
+  group_by(Attained_Age, Face_Group) %>%
+  summarise(
+    Number_Of_Deaths = sum(Number_Of_Deaths),
+    Expected_Deaths = sum(Expected_Deaths),
+    `Log A/E` = log(Number_Of_Deaths / Expected_Deaths)
+  ) %>%
+  filter(Expected_Deaths > 0, Number_Of_Deaths > 0)
+
+ggplot(plot_data, aes(x=Attained_Age, y=`Log A/E`, group=Face_Group, color=Face_Group)) +
+  geom_point(aes( size=Number_Of_Deaths)) +
+  geom_smooth(method="lm", aes(weight=Number_Of_Deaths)) +
+  theme_minimal() + 
+  ggtitle("Attained Age and Face Amount Interaction?", 
+          "Non-parallel lines provide evidence of interacton")
+
+```
+
+#### Model-based check for interaction
+
+Fitting two simple GLMs and comparing the AIC leads us to a similar conclusion, 
+but the AIC difference is small, so it's a toss-up.  As a word of caution,
+AIC is not a panacea, so don't use it as the sole evidence for picking a model. 
+
+```{r}
+
+model_wo_interaction <- glm(
+  Number_Of_Deaths ~ offset(log(Expected_Deaths)) +
+    Attained_Age + Face_Amount,
+  data=model_data.train,
+  family = poisson()
+)
+
+model_w_interaction <- glm(
+  Number_Of_Deaths ~ offset(log(Expected_Deaths)) +
+    Attained_Age * Face_Amount,
+  data=model_data.train,
+  family = poisson()
+)
+
+tibble(
+  `Model Variant` = c("Without Interaction", "With Interaction"),
+  `AIC` = c(AIC(model_wo_interaction), AIC(model_w_interaction)),
+  `Better Model (AIC)?` = c(
+    ifelse(
+      AIC(model_wo_interaction) < AIC(model_w_interaction),
+      "Y", "N"),
+    ifelse(
+      AIC(model_wo_interaction) > AIC(model_w_interaction),
+      "Y", "N"))) %>%
+  kable(caption="Model-based (AIC/BIC) approach to interaction decision") %>%
+  kable_styling()
+
+
+```
+
+#### Model-Base checking of residuals
+
 
 ```{r}
 
 ```
 
-## Model
+
+### Predictive Modeling
+
+```{r}
+
+glm_fit <- glm(
+  Number_Of_Deaths ~
+    offset(log(Expected_Deaths)) +
+    Calendar_Year + 
+    Gender:Issue_Year + 
+    Gender * splines::ns(Attained_Age, knots=c(65, 80)) +
+    Face_Amount - 1,
+  data=model_data.train,
+  family = poisson()
+)
+
+summary(glm_fit)
+
+```
+
+
+
 
 ## Appendix
 
