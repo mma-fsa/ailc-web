@@ -539,6 +539,10 @@ prepare_modeling_data <- function(df, table_mapping) {
                              "5000000-9999999",
                              "10000000+"
                            ), ordered = T),
+      Face_Amount_Band_2 = forcats::fct_collapse(
+        Face_Amount_Band,
+        `2500000+` = c("2500000-4999999", "5000000-9999999", "10000000+")
+      ),
       Expected_Deaths = Policies_Exposed * qx)
 }
 
@@ -761,25 +765,54 @@ tibble(
 
 ```
 
-#### Model-Base checking of residuals
+### Predictive Modeling
+
+#### Initial Model
+
+Let's take another look at the face amount and attained age, but this time with
+a non-linear term for the trend line.  Due to low credibility we've collapse the
+$2.5M+ into a single band.
 
 
-```{r}
+```{r fig.width}
+
+plot_data <- model_data.train %>%
+  group_by(Attained_Age, Face_Amount_Band_2) %>%
+  summarise(
+    Number_Of_Deaths = sum(Number_Of_Deaths),
+    Expected_Deaths = sum(Expected_Deaths),
+    `Log A/E` = log(Number_Of_Deaths / Expected_Deaths)
+  ) %>%
+  filter(Expected_Deaths > 0, 
+         Number_Of_Deaths > 0)
+
+ggplot(plot_data, aes(x=Attained_Age, y=`Log A/E`, 
+                      group=Face_Amount_Band_2, 
+                      color=Face_Amount_Band_2)) +
+  facet_wrap(~ Face_Amount_Band_2) +
+  geom_smooth(method="gam", aes(weight=Number_Of_Deaths), se=F) +
+  theme_minimal() + 
+  ggtitle("Attained Age and Face Amount Interaction?", 
+          "Non-parallel lines provide evidence of interacton")
 
 ```
 
 
-### Predictive Modeling
+ The effect for attained age looks non-linear, since the below lines are not
+ straight.  This provides strong evidence that we'll need a [Restricted Cubic Spline](https://towardsdatascience.com/restricted-cubic-splines-c0617b07b9a5).
+ 
+ * Note that there are two places where the curve has a change in convexity.  Around
+ age 80, the curve seems to begin an upward slope.  We'll place a single [knot](https://stats.stackexchange.com/questions/517375/splines-relationship-of-knots-degree-and-degrees-of-freedom) 
+ at this age to keep the model simpler.
+
 
 ```{r}
 
 glm_fit <- glm(
   Number_Of_Deaths ~
     offset(log(Expected_Deaths)) +
-    Calendar_Year + 
-    Gender:Issue_Year + 
-    Gender * splines::ns(Attained_Age, knots=c(65, 80)) +
-    Face_Amount - 1,
+    splines::ns(Attained_Age, knots=c(80)) *
+    Face_Amount_Band_2 - 1,
   data=model_data.train,
   family = poisson()
 )
@@ -788,7 +821,33 @@ summary(glm_fit)
 
 ```
 
+#### Model-Base checking of residuals
 
+To check the model's output, and find the next term (or terms) to add to the model,
+
+
+```{r}
+
+model_data.train["Predicted_Deaths"] <- predict(
+  glm_fit,
+  newdata = model_data.train,
+  type = "response"
+)
+
+rpart_model <- rpart(
+  as.matrix(model_data.train[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class +
+    Smoker_Status + Face_Amount,
+    data=model_data.train,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3))
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
+
+Issue year stands out as  
 
 
 ## Appendix
