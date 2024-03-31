@@ -932,6 +932,19 @@ rpart_model %>%
 
 ```
 
+### Residual Diagnostics
+
+```{r}
+
+xgboost::xgb.DMatrix(
+  
+)
+
+```
+
+
+### Check Test Set
+
 ```{r}
 
 model_data.test$Predicted_Deaths <- predict(
