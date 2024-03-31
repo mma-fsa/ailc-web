@@ -1,0 +1,1137 @@
+---
+title: "Adventures in Low Credibility"
+author: "Mike McPhee Anderson, FSA"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    highlight: kate
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+<style>
+body {
+  font-family: "Roboto", sans-serif !important;
+}
+.table-wrapper {
+  background: #F7F7F7 !important;
+  color: black !important;
+}
+</style>
+
+## Overview
+
+There are few practical guides for actuarial data science, although there are some 
+textbook quality resources listed at the bottom under [*Additional Resources*](#additional-resources).
+This short guide is a collection of techniques designed to bridge the gap 
+between theory and practice.
+
+The data used in this guide is real mortality data from the [SOA's ILEC Experience](). It contains about 11.7K claims between 
+years 2009 and 2018, and is two-class and smoker distinct perm business issued between 1981 and 2000.  We'll pretend that
+our company has assumed or acquired this business, and there is a desire to develop a new mortality basis from scratch.
+
+## Setup
+
+Load [rpart]() and [tidyverse]().
+
+```{r warning=F, message=F}
+
+options(mc.cores = 4)
+
+load_pkgs <- function(pkgs) {
+  for (p in pkgs) {
+    if (!require(p, character.only = TRUE)) {
+      install.packages(p, quiet = T)
+      require(p, character.only = TRUE)
+    }  
+  }
+}
+
+load_pkgs(c("rpart", "rpart.plot", "knitr", "kableExtra", 
+            "tidyverse", "rstanarm", "visreg", "bayesplot",
+            "glmnet"))
+
+```
+
+### Load Experience
+
+There are 11.7K claims total, with 8K in the training set, and 3.7K in the 
+testing (holdout) set.  
+
+* The train / test split is performed on *Calendar Year*,
+with years 2009-2016 in the training set and years 2017-2019 in the test set. You 
+may be wondering, why split on Calendar Year? See [Methodology Note 1](). 
+
+* See the [Overview](#overview) for additional recap of this data.
+
+
+```{r}
+
+# load data
+perm_experience <- readRDS("./data/ulsg_experience.rds") %>%
+  filter(Policies_Exposed > 0 )
+
+# partition into train / test
+perm_experience.train <- perm_experience %>% filter(training_set == 1)
+perm_experience.test <- perm_experience %>% filter(training_set == 0 )
+
+# create summary
+perm_experience %>%
+  mutate(Cohort_Name = ifelse(training_set, "Train", "Test")) %>%
+  group_by(Cohort_Name, Gender, Smoker_Status, Preferred_Class) %>%
+  summarise(
+    `Total Claims` = sum(Number_Of_Deaths),
+    .groups="drop"
+  ) %>%
+  arrange(desc(Cohort_Name), desc(Gender), Smoker_Status, Preferred_Class) %>%
+  kable(digits=0, caption="Claim Experience Summary") %>%
+  kable_styling()
+
+
+```
+
+### Load the VBT Tables
+
+The `vbt_tables` data contains the 2001, 2008, and 2015 VBT tables,
+about 147 in total.
+
+* With 8K claims in the training set, we don't have quite enough data to develop
+our assumptions only from the data.  We'll use the time-honored technique
+of starting with an industry table, but with a statistical twist discussed later.
+
+* Since the 2015 VBT table is developed using the ILEC experience, we'll limit 
+ourselves to 2001 and 2008 tables (to avoid data leakage).
+
+```{r}
+
+# load about 147 SOA 
+vbt_tables <- readRDS("./data/vbt_tables.rds")
+
+```
+
+
+## Base Table Selection
+
+Typically, actuaries will apply a combination of judgement and *Actual to Expected (A/E) analysis* 
+to identify a suitable industry table to use as a starting point.  
+
+* [Industry tables](http://mort.soa.org) are developed on a very large population of 
+similar lives (i.e. fully credible), and provide the model with important hints about
+the shape of the mortality curve, especially in areas where data is very thin. From 
+a statistical perspective, this is quite close to a prior distribution.
+
+* Typically, a table is selected by finding one where $\text{Actual Claims} \div \text{Expected Claims} \approx 100\%$,
+The expected claims are computed using $\text{Exposure} \times q_x$, with the $q_x$ value is provided by the industry
+table.
+
+  * The weakness of A/E analysis is that **two big errors can cancel out**.  If we are over-predicting deaths at older
+ages, and under-predicting and younger, we very well could end up close to 100% overall.
+
+* So what's the alternative to A/E analysis?  In actuarial terms, what if we could find a technique that:
+
+  1. Works at the most granular level (cell level).
+  
+  2. Is credibility aware, so that small differences in very credible cells are correctly evaluated against large differences in cells with low credibility.  
+  
+  3. Mismatches will never cancel out.
+  
+  4. Is simple enough to do in Excel?
+  
+Sounds great right?  The measure that satisfies the above properties is simply *probability*, i.e. finding the most likely table.  See Methodology Note 3 for more details.
+  
+### Most Likely Table Selection
+
+Our table selection still requires judgement. We don't want to evaluate probabilities
+from smokers tables for the non-smoking population, or males for females, etc. The
+below code uses a mapping to restrict the combinations to the ones that make sense.
+
+* The below code creates this mapping. 
+
+```{r}
+
+# limit the tables to 2001 & 2008 vbt
+vbt_table_versions <- c("2001 vbt", "2008 vbt")
+
+# try both alb and anb bases
+alb_anb_filter <- c("alb", "anb")
+
+# map the 'Smoker' class in the experience to the 'smoker' and 'sm' tables
+# map the 'Non-smoker' class in the experience to 'non-smoker', 'nonsmoker' and 'ns'
+smoker_filter <- list(
+  "Smoker" = c("smoker", "sm"),
+  "NonSmoker" = c("non-smoker", "nonsmoker", "ns")
+)
+
+# map Males and Females to the respective tables
+gender_filter <- list(
+  "Male" = c("male"),
+  "Female" = c("female")
+)
+
+```
+
+
+Convert the above mappings into a *join table* that can be used to connect the 
+experience with the correct vbt tables.  
+
+ * The columns prefixed with vbt will be joined to the `vbt_tables` dataframe.
+ 
+ * The columns prefixed with exp will be joined to the `perm_experience` dataframe.
+
+| vbt_table_version | vbt_alb_anb | vbt_smoker | vbt_gender | exp_smoker | exp_gender | 
+| ----------------- | ----------- | ---------- | ---------- | ---------- | ---------- |
+| vbt_2008          | alb         | smoker     | male       | Smoker     | Male       |
+| vbt_2001          | alb         | smoker     | male       | Smoker     | Male       |
+| vbt_2008          | anb         | smoker     | male       | Smoker     | Male       |
+| vbt_2001          | anb         | smoker     | male       | Smoker     | Male       |
+| ........          | ...         | ......     | ....       | ......     | ...        |
+| vbt_2001          | anb         | ns         | female     | NonSmoker  | Female     |
+
+
+```{r}
+
+experience_join_table <- NULL
+
+for (smoker_status in names(smoker_filter)) {
+  for (gender in names(gender_filter)) {
+    
+    table_part <- expand.grid(
+      vbt_table_version = vbt_table_versions,
+      vbt_alb_anb = alb_anb_filter,
+      vbt_smoker = smoker_filter[[smoker_status]],
+      vbt_gender = gender_filter[[gender]],
+      exp_smoker = smoker_status,
+      exp_gender = gender
+    )
+    
+    if (is.null(experience_join_table)) {
+      experience_join_table <- table_part
+    } else {
+      experience_join_table <- rbind(
+        experience_join_table,
+        table_part)
+    }
+  }
+}
+
+```
+
+
+Using the above mapping, connect the experience to each vbt table and compute
+the likelihood. 
+
+ * The typical likelihood measure used in actuarial science for claims frequency is the Poisson Distribution. See Methodology Note 3 for more details.
+
+```{r}
+
+likelihood_calc <- suppressWarnings({
+ perm_experience.train %>%
+  # connect the experience with the join table
+  inner_join(
+    experience_join_table, 
+    by=c("Smoker_Status" = "exp_smoker", "Gender" = "exp_gender")) %>%
+  # connect the experience to the vbt_tables
+  inner_join(
+    vbt_tables,
+    by=c(
+      "vbt_table_version" = "table_version",
+      "vbt_alb_anb" = "alb_anb",
+      "vbt_smoker" = "smoker",
+      "vbt_gender" = "sex",
+      "Issue_Age" = "issue_age",
+      "Attained_Age" = "attained_age"
+    )) %>% 
+  # group within each vbt table / experience & calendar year
+  group_by(
+    vbt_table_version,
+    vbt_alb_anb,
+    vbt_smoker,
+    vbt_gender,
+    tbl_name,
+    Calendar_Year,
+    Smoker_Status,
+    Gender,
+    Preferred_Class
+  ) %>%
+  # compute the poisson log likelihood
+  mutate(
+    exp_claims = qx * Policies_Exposed,
+    log_likelihood = dpois(Number_Of_Deaths, exp_claims, log=T)
+  ) %>%
+  summarise(
+    ll = sum(log_likelihood),
+    total_claims = sum(Number_Of_Deaths),
+    exp_claims = sum(exp_claims),
+    ae = total_claims / exp_claims,
+    .groups = "drop"
+  )
+})
+
+# check that we haven't duplicated any claims
+likelihood_calc %>%
+  group_by(
+    Gender,
+    Smoker_Status,
+    Preferred_Class,
+    vbt_table_version,
+    vbt_alb_anb,
+    tbl_name) %>%
+  summarise(
+    total_claims = sum(total_claims),
+    .groups="drop"
+  ) %>%
+  head(1) %>%
+  t() %>%
+  as.data.frame() %>%
+  rownames_to_column() %>%
+  select(
+    Field = rowname,
+    Value = V1
+  ) %>%
+  kable(caption = "Spot-check for duplicates") %>%
+  kable_styling()
+
+```
+
+
+We'll use something similar to cross-validation to choose the best table for each experience
+cohort.  By holding out one calendar year for each table, we can ensure that the most likely
+table is consistent even when one year is removed.
+
+ * Things like a particulary bad flu season, or 1 in 100 mortality event might skew mortality.
+ 
+ * Each iteration of the below loop works like a "vote" for the best mortality table for a given cohort,
+ if there is a strong consensus (a table appearing a majority of the time), then we can gain some confidence
+ that the results aren't skewed by one-time mortality events (proxied via Calendar year).
+ 
+
+```{r fig.width=8}
+
+# create a list of the years in the training set
+holdout_years <- perm_experience.train %>%
+  select(Calendar_Year) %>%
+  distinct() %>%
+  collect() %>%
+  arrange(Calendar_Year) %>%
+  pull(Calendar_Year)
+
+# keep the overall A/E of the holdout year (across all sex / smokers)
+# in a vector to estimate the out-of-sample error later
+holdout_years_ae <- c()
+
+# this will hold the results of the join
+all_vbt_rankings <- NULL
+
+# run the cross-validation like procedure
+for (holdout_yr in holdout_years) {
+
+    # compute the log-likelihood for each cell after
+    # holding out a single calendar year
+    vbt_rankings <- likelihood_calc %>%
+      filter(Calendar_Year != !!holdout_yr) %>%
+      group_by(
+        vbt_table_version,
+        vbt_alb_anb,
+        vbt_smoker,
+        vbt_gender,
+        tbl_name,
+        Smoker_Status,
+        Gender,
+        Preferred_Class
+      ) %>%
+      summarise(
+        ll = sum(ll),
+        .groups="drop"
+      ) %>%
+      group_by(
+        Smoker_Status,
+        Gender,
+        Preferred_Class
+      ) %>%
+      mutate(
+        rank = row_number(desc(ll))
+      ) %>%
+      arrange(rank)
+
+    # find the best table (maximum likelihood)
+    best_table <- vbt_rankings %>%
+      filter(rank == 1)
+
+    # compute the actual-to-expected on the holdout set
+    holdout_ae <- likelihood_calc %>%
+      filter(Calendar_Year == holdout_yr) %>%
+      inner_join(best_table %>%
+                   select(-c(ll:rank)), by=c(
+        "vbt_table_version",
+        "vbt_alb_anb",
+        "vbt_smoker",
+        "vbt_gender",
+        "tbl_name",
+        "Smoker_Status",
+        "Gender",
+        "Preferred_Class"
+      )) %>%
+      group_by(1) %>%
+      summarise(
+        total_claims = sum(total_claims),
+        exp_claims = sum(exp_claims),
+        ae = total_claims / exp_claims,
+        .groups="drop"
+      ) %>%
+      pull(ae)
+
+    # keep the A/E in the holdout year for the final plot
+    holdout_years_ae <- c(
+      holdout_years_ae,
+      holdout_ae
+    )
+
+    # append the record of the best tables
+    if (is.null(all_vbt_rankings)) {
+      all_vbt_rankings <- best_table
+    } else {
+      all_vbt_rankings <- rbind(
+        all_vbt_rankings,
+        best_table
+      )
+    }
+}
+
+rm(best_table)
+
+plot_data <- tibble(
+  `Holdout Year` = holdout_years,
+  `A/E` = holdout_years_ae
+)
+
+ggplot(plot_data, aes(x=`Holdout Year`, y=`A/E`)) +
+  geom_line() +
+  scale_y_continuous(
+    trans=scales::pseudo_log_trans(), 
+    labels = scales::percent_format()) +
+  theme_minimal() +
+  ylab("Actual-to-Expected") +
+  ggtitle(sprintf("Holdout Year A/E (%.1f%% average)", 100*mean(holdout_years_ae)), 
+          "Expected = Maximum Likelihood VBT Table") +
+  geom_hline(yintercept = 1, color="red")
+
+
+```
+
+Using the likelihood calcs (one for each holdout year and cohort), see if there is a
+clear concensus.  The below chart shows the most likely table for each of the 8 folds (holdout years).
+
+ * The only cell without a clear majority is the *Non-Smoker Females, UW Class #2*.  In real-life, we'd probably create a tie-breaker criterion, but here we'll just pick one, and count on the subsequent model to make the correct adjustments.
+
+```{r fig.width=8}
+
+plot_data <- all_vbt_rankings %>%
+  mutate(
+    tbl_name = paste0(vbt_table_version, " ", vbt_alb_anb, " ", tbl_name),
+    cell_name = interaction(Smoker_Status, Gender, Preferred_Class)
+  )
+
+suppressWarnings({
+  ggplot(plot_data, aes(x=tbl_name)) +
+    geom_histogram(stat="count") + 
+    facet_wrap(~ cell_name, scales="free", ncol=2) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+    ) + 
+    coord_flip() +
+    theme_minimal() +
+    xlab("VBT Table") + 
+    ylab("Number of Maximum Likelihood Votes") +
+    ggtitle("Results of maximum likelihood cross-validation")
+})
+
+```
+
+Pick the best table based on the most votes from the maximum likelihood procedure. 
+
+```{r warning=F, message=F}
+
+best_vbt_table <- all_vbt_rankings %>%
+  group_by(vbt_table_version, vbt_smoker, vbt_gender, vbt_alb_anb,
+           tbl_name, Smoker_Status, Gender, Preferred_Class) %>%
+  summarise(
+    tbl_count = n()
+  ) %>%
+  group_by(
+    Smoker_Status, Gender, Preferred_Class
+  ) %>%
+  arrange(desc(tbl_count)) %>%
+  mutate(
+    most_common = row_number()
+  ) %>%
+  filter(most_common == 1) %>%
+  select(-tbl_count, -most_common)
+
+best_vbt_table %>%
+  mutate(
+    `Best Table` = paste0(
+      vbt_table_version, " ", vbt_alb_anb,
+      " ", tbl_name
+    )
+  ) %>%
+  select(Gender, Smoker_Status, Preferred_Class, `Best Table`) %>%
+  arrange(Gender, Smoker_Status, Preferred_Class) %>%
+  kable(caption="Final Table Selection") %>%
+  kable_styling() 
+
+
+```
+
+### Apply the mappings to the training & testing set
+
+Create two new dataframes `model_data.train` and `model_data.test`:
+
+ * Apply the VBT table mappings that we developed above to create a *Expected Claims* column.
+ 
+ * Convert the face amount bands to an ordered factor called face_amount_band. 
+
+```{r warning=F}
+
+prepare_modeling_data <- function(df, table_mapping) {
+ df %>%
+  # connect the experience with the join table
+  inner_join(
+    best_vbt_table,
+    by=c("Smoker_Status", "Gender", "Preferred_Class")
+  ) %>%
+  inner_join(
+    vbt_tables,
+    by=c("vbt_table_version"="table_version",
+         "vbt_smoker"="smoker",
+         "vbt_gender"="sex",
+         "vbt_alb_anb"="alb_anb",
+         "tbl_name"="tbl_name",
+         "Issue_Age"="issue_age",
+         "Attained_Age"="attained_age")) %>%
+    mutate(
+      Face_Amount_Band = stringr::str_trim(Face_Amount_Band),
+      Face_Amount = case_when(
+           Face_Amount_Band == "1-9999" ~ 5000,
+           Face_Amount_Band == "10000-24999" ~ 17500,
+           Face_Amount_Band == "25000-49999" ~ 37500,
+           Face_Amount_Band == "50000-99999" ~ 75000,
+           Face_Amount_Band == "100000-249999" ~ 175000,
+           Face_Amount_Band == "250000-499999" ~ 375000,
+           Face_Amount_Band == "500000-999999" ~ 750000,
+           Face_Amount_Band == "1000000-2499999" ~ 1750000,
+           Face_Amount_Band == "2500000-4999999" ~ 3750000,
+           Face_Amount_Band == "5000000-9999999" ~ 7500000,
+           Face_Amount_Band == "10000000+" ~ 15000000),
+      Face_Amount_Band = factor(Face_Amount_Band,
+                           levels = c(
+                             "1-9999",
+                             "10000-24999",
+                             "25000-49999",
+                             "50000-99999",
+                             "100000-249999",
+                             "250000-499999",
+                             "500000-999999",
+                             "1000000-2499999",
+                             "2500000-4999999",
+                             "5000000-9999999",
+                             "10000000+"
+                           ), ordered = T),
+      Face_Amount_Band_2 = forcats::fct_collapse(
+        Face_Amount_Band,
+        `<50K` = c("1-9999", "10000-24999", "25000-49999"),
+        other_level = "50K+"
+      ),
+      Face_Amount_Band_Int = as.integer(Face_Amount_Band),
+      Expected_Deaths = Policies_Exposed * qx)
+}
+
+model_data.train <- perm_experience.train %>% 
+  prepare_modeling_data(best_vbt_table)
+
+model_data.test <- perm_experience.test %>%
+  prepare_modeling_data(best_vbt_table)
+
+tibble(
+  Dataset = c("model_data.train", "model_data.test", "perm_experience"),
+  `Number of Deaths` = c(
+    sum(model_data.train$Number_Of_Deaths),
+    sum(model_data.test$Number_Of_Deaths),
+    sum(perm_experience$Number_Of_Deaths)
+  ),
+  `Expected Number of Deaths (Best VBT Table)` = c(
+    round(sum(model_data.train$Expected_Deaths), 0),
+    round(sum(model_data.test$Expected_Deaths), 0),
+    NA
+  ),
+  `Number of Exposures` = c(
+    round(sum(model_data.train$Policies_Exposed), 0),
+    round(sum(model_data.test$Policies_Exposed), 0),
+    round(sum(perm_experience$Policies_Exposed), 0)
+  )
+) %>% 
+  kable(caption="check modeling data frame") %>%
+  kable_styling()
+
+```
+
+
+### Plot Experience vs. Best Tables
+
+The below plots compare the selected VBT tables to the actual number of claims. The expected number of claims is calculated as $q_x^{vbt} \times \text{exposure}$.  Purely on an attained age basis, the fit looks good.  We'd expect the black line to wiggly randomly on either side of the expected claims line, and not be biased above or below the line.  With this in mind, a few things stand out.
+
+ * Standard (2) Male Smokers look low between ages 60 and 80.
+ 
+ * Preferred (1) Female Non-smokers also look low between 60 and 80.
+
+```{r}
+
+plot_data <- model_data.train %>%
+  mutate(
+    cohort_name = interaction(
+      Gender,
+      Smoker_Status,
+      Preferred_Class,
+      vbt_alb_anb)
+  ) %>%
+  group_by(
+    tbl_name,
+    cohort_name,
+    Attained_Age,
+    vbt_alb_anb
+  ) %>%
+  summarise(
+    total_claims = sum(Number_Of_Deaths),
+    exp_claims = sum(Policies_Exposed * qx),
+    .groups = "drop"
+  ) %>%
+  ungroup()
+
+ggplot(plot_data, aes(x=Attained_Age, y=exp_claims, color=tbl_name, group=tbl_name)) +
+  geom_line() +
+  facet_wrap(~ cohort_name, scales="free_y") +
+  geom_line(
+    aes(y=total_claims), color="black"
+  ) +
+  ggtitle("VBT Table (Expected) vs. Actual Claims", "Black line is actuals") +
+  ylab("Claim Count") +
+  xlab("Attained Age") +
+  theme_minimal() +
+  theme(
+    legend.position="bottom"
+  ) +
+  guides(color=guide_legend(title="VBT Table:"))
+
+
+```
+
+## Model
+
+### Inferential Modeling
+
+Typically, one might start with some plots and tables to gather intuition as to
+how to build the model, which will make adjustments on top of the VBT Tables.  The
+drawback of this approach is [confirmation bias](https://en.wikipedia.org/wiki/Confirmation_bias),
+in other words, we will probably find patterns that we already think are there.
+
+ * In the above plot, we noticed that two sex and underwriting class combinations
+ have a mismatch.  But is this the best explanation?  Perhaps these underwriting classes
+ have a disproportionate amount of low face amounts, or were issued the longest time ago,
+ so that the protective effects of underwriting have worn off more than other classes.
+ 
+Instead, we'll use a decision tree to look for patterns.  In particular, the decision
+tree finds the pattern that *creates the largest A/E split, while also considering credibility*.
+You read the tree from top to bottom. This will make more sense after we look at an example.  
+
+Here is a guide to decision tree plots, which is also shown in an equivalent tabular below the plot.
+
+ * In each of the circular boxes (called *nodes*), there are three rows of numbers
+ 
+   * The topmost row is the $\text{Actual Number of Claims} \div \text{Expected Claims}$, with the expecteds based on the VBT table.
+   
+   * The second row contains two numbers, separated by a slash.  The first number is the number of claims in that node, and the second number is the poisson deviance, which I don't find particulary useful.
+   
+   * The third row contains the percent of the input rows that fall into that node.  This gives you a sense of when the data is getting thin as you go further down the tree.
+   
+ * Below each node is a split (decision) and the criterion.  For example, the first split taken is based on the Face_Amount less than \$56.2K or greater than \$56.2K.
+
+
+```{r fig.width=8}
+
+options(scipen = 999)
+
+rpart_model <- rpart(
+  as.matrix(model_data.train[,c("Expected_Deaths","Number_Of_Deaths")]) ~ 
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class + 
+    Smoker_Status + Face_Amount,
+    data=model_data.train,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3)) 
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
+
+**Tabular form of decision tree, first three rows**
+
+|Description|A/E|Number of Claims|% of Data|
+|-----------|-----------|-----------|-----------|
+|**Top Row**|95.4%|7,975|100.0%|
+|---|
+|**Second Row**|
+|Face Amount >= 56.2K|89.3%|4,801|71.8%|
+|Face Amount < 56.2K|106.0%|3,174|28.2%|
+|*Subtotal*|95.4%|7,975|100.0%|
+|---|
+|**Third Row**|
+|Face Amt >= 56.2K and Attained Age < 86|85.9%|3,824|67.8%|
+|Face Amt >= 56.2K and Attained Age >= 86|106.0%|977|04.1%|
+|Face Amt < 56.2K and Attained Age >= 68|102.0%|2,550|13.5%|
+|Face Amt < 56.2K and Attained Age < 68|129.0%|624|14.7%|
+|*Subtotal*|95.4%|7,975|100.0%|
+
+Using the decision tree, **Face Amount** stands out as the first feature we should add to the model,
+followed by **Attained Age**.  Since the Attained Age and face do not create
+a uniform A/E difference, and interaction might be necessary.  To get a sense
+of which way to go (interaction or independent terms), we could use a plot.  
+Alternatively, we might build a glm and check the AIC.  Here we'll do both.  
+
+#### Plot-based check for Attained Age vs. Face Amount Interaction
+
+Since the lines in the below plot are not parallel, it provides evidence for 
+an interaction between attained age and face amount. 
+
+```{r warning=FALSE, message=FALSE, fig.width=8}
+
+plot_data <- model_data.train %>%
+  mutate(
+    Face_Group = ifelse(
+      Face_Amount <= 75000, 
+      "<=75K",
+      ">75K")) %>%
+  group_by(Issue_Age, Face_Group) %>%
+  summarise(
+    Number_Of_Deaths = sum(Number_Of_Deaths),
+    Expected_Deaths = sum(Expected_Deaths),
+    `Log A/E` = log(Number_Of_Deaths / Expected_Deaths)
+  ) %>%
+  filter(Expected_Deaths > 0, Number_Of_Deaths > 0)
+
+ggplot(plot_data, aes(x=Issue_Age, y=`Log A/E`, group=Face_Group, color=Face_Group)) +
+  geom_point(aes( size=Number_Of_Deaths)) +
+  geom_smooth(method="loess", aes(weight=Number_Of_Deaths)) +
+  theme_minimal() + 
+  ggtitle("Issue Age and Face Amount Interaction?", 
+          "Non-parallel lines provide evidence of interacton")
+
+```
+
+#### Model-based check for interaction
+
+Fitting two simple GLMs and comparing the AIC leads us to a similar conclusion, 
+but the AIC difference is small, so it's a toss-up.  As a word of caution,
+AIC is not a panacea, so don't use it as the sole evidence for picking a model. 
+
+```{r}
+
+model_wo_interaction <- glm(
+  Number_Of_Deaths ~ offset(log(Expected_Deaths)) +
+    splines::ns(Issue_Age, knots=c(60)) + Face_Amount,
+  data=model_data.train,
+  family = poisson()
+)
+
+model_w_interaction <- glm(
+  Number_Of_Deaths ~ offset(log(Expected_Deaths)) +
+    splines::ns(Issue_Age, knots=c(60)) * Face_Amount,
+  data=model_data.train,
+  family = poisson()
+)
+
+tibble(
+  `Model Variant` = c("Without Interaction", "With Interaction"),
+  `AIC` = c(AIC(model_wo_interaction), AIC(model_w_interaction)),
+  `Better Model (AIC)?` = c(
+    ifelse(
+      AIC(model_wo_interaction) < AIC(model_w_interaction),
+      "Y", "N"),
+    ifelse(
+      AIC(model_wo_interaction) > AIC(model_w_interaction),
+      "Y", "N"))) %>%
+  kable(caption="Model-based (AIC/BIC) approach to interaction decision") %>%
+  kable_styling()
+
+
+```
+
+### Predictive Modeling
+
+#### Initial Model
+
+Let's take another look at the face amount and attained age, but this time with
+a non-linear term for the trend line.  Due to low credibility we've collapse the
+$2.5M+ into a single band.
+
+
+```{r fig.width}
+
+plot_data <- model_data.train %>%
+  group_by(Issue_Age, Face_Amount_Band_2) %>%
+  summarise(
+    Number_Of_Deaths = sum(Number_Of_Deaths),
+    Expected_Deaths = sum(Expected_Deaths),
+    `Log A/E` = log(Number_Of_Deaths / Expected_Deaths)
+  ) %>%
+  filter(Expected_Deaths > 0, 
+         Number_Of_Deaths > 0)
+
+ggplot(plot_data, aes(x=Issue_Age, y=`Log A/E`, 
+                      group=Face_Amount_Band_2, 
+                      color=Face_Amount_Band_2)) +
+  facet_wrap(~ Face_Amount_Band_2) +
+  geom_smooth(method="gam", aes(weight=Number_Of_Deaths), se=F) +
+  theme_minimal() + 
+  ggtitle("Issue Age and Face Amount Interaction?", 
+          "Non-parallel lines provide evidence of interacton")
+
+```
+
+
+ The effect for attained age looks non-linear, since the below lines are not
+ straight.  This provides strong evidence that we'll need a [Restricted Cubic Spline](https://towardsdatascience.com/restricted-cubic-splines-c0617b07b9a5).
+ 
+ * Note that there are two places where the curve has a change in convexity.  Around
+ age 80, the curve seems to begin an upward slope.  We'll place a single [knot](https://stats.stackexchange.com/questions/517375/splines-relationship-of-knots-degree-and-degrees-of-freedom) 
+ at this age to keep the model simpler.
+
+
+```{r}
+
+glm_fit <- glm(
+  Number_Of_Deaths ~
+    offset(log(Expected_Deaths)) +
+    splines::ns(Issue_Age, knots=c(60)) * splines::ns(Face_Amount, knots=c(125000)) +
+    splines::ns(Attained_Age, knots=c(65)) +
+    Issue_Age:splines::ns(Issue_Year, knots=c(2002)) +
+    Preferred_Class * Gender - 1,
+  data=model_data.train,
+  family = poisson()
+)
+
+summary(glm_fit)
+
+```
+
+#### Model-Base checking of residuals
+
+To check the model's output, and find the next term (or terms) to add to the model,
+
+```{r}
+
+model_data.train["Predicted_Deaths"] <- predict(
+  glm_fit,
+  newdata = model_data.train,
+  type = "response"
+)
+
+rpart_model <- rpart(
+  as.matrix(model_data.train[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class +
+    Smoker_Status + Calendar_Year,
+    data=model_data.train,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3))
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
+
+Issue year stands out, in particular there is an increasing pattern of A/E by issue year.
+Using the above chart, we see the following pattern:
+
+| Issue Year | A/E |
+|------------|-----|
+| < 1991     | 93.7%|
+| 1991-1999  | 103% |
+| 200+       | 120% |
+
+And confirming the pattern graphically, we see that a (log) linear pattern exists,
+so no spline will be necessary for this term.
+
+```{r}
+
+plot_data <- model_data.train %>%
+  group_by(Calendar_Year) %>%
+  summarise(
+    Number_Of_Deaths = sum(Number_Of_Deaths),
+    Predicted_Deaths = sum(Predicted_Deaths),
+    `Actual-to-Predicted` = log(Number_Of_Deaths / Predicted_Deaths),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(
+    poi_dev = dpois(Number_Of_Deaths, Predicted_Deaths)
+  )
+
+ggplot(plot_data, aes(x=Calendar_Year, y=`Actual-to-Predicted`)) +
+  geom_point() +
+  geom_smooth(method="loess") +
+  ylab("Log Actual to Modeled") +
+  theme_minimal() +
+  ggtitle("Calendar Year vs. Model")
+
+```
+
+#### Refine Model
+
+```{r}
+
+glmnet_aic <- function(fit) {
+  tLL <- fit$nulldev - deviance(fit)
+  k <- fit$df
+  n <- fit$nobs
+  -tLL+2*k+2*k*(k+1)/(n-k-1)
+}
+
+
+```
+
+
+```{r}
+
+model_formula <- Number_Of_Deaths ~ splines::ns(Issue_Age, knots=c(60)) * splines::ns(Face_Amount, knots=c(125000)) +
+    splines::ns(Attained_Age, knots=c(65)) +
+    Issue_Age:splines::ns(Issue_Year, knots=c(2002)) +
+    Preferred_Class * Gender - 1
+
+X_mat <- model.matrix(
+  model_formula,
+  data=model_data.train
+)
+
+glm_fit_2 <- glmnet(
+  X_mat,
+  model_data.train$Number_Of_Deaths,
+  family="poisson",
+  offset=log(model_data.train$Expected_Deaths),
+  relax=T,
+  intercept=F
+)
+
+glm_fit_2.aic <- glmnet_aic(glm_fit_2$relaxed)
+
+plot(
+  1:length(glm_fit_2$lambda),
+  glm_fit_2.aic,
+  type="l"
+)
+
+```
+
+```{r}
+
+best_aic_idx <- min(which(glm_fit_2.aic == min(glm_fit_2.aic)))
+
+keep_model_terms <- glm_fit_2$relaxed$beta[, best_aic_idx]
+
+keep_model_terms <- names(keep_model_terms)[which(abs(keep_model_terms) > 0)]
+keep_model_terms
+
+```
+
+```{r}
+
+drop_model_terms <- glm_fit_2$relaxed$beta[, best_aic_idx]
+drop_model_terms <- names(drop_model_terms)[which(abs(drop_model_terms)== 0)]
+drop_model_terms
+
+```
+
+
+```{r}
+
+rpart_model <- rpart(
+  as.matrix(model_data.train[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
+    Issue_Year,
+    data=model_data.train,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3))
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
+
+```{r}
+
+model_data.test["Predicted_Deaths"] <- predict(
+  glm_fit_2$relaxed,
+  s = glm_fit_2$lambda[best_aic_idx],
+  newx = model.matrix(
+    model_formula,
+    data=model_data.test),
+  newoffset = log(model_data.test$Expected_Deaths),
+  type = "response"
+)
+
+sum(model_data.test$Number_Of_Deaths) / sum(model_data.test$Predicted_Deaths)
+
+```
+
+### Bayesian Model: Evaluatate Test Set
+
+```{r}
+
+model_data.train %>%
+  group_by(Calendar_Year) %>%
+  summarise(Number_of_Deaths = sum(Number_Of_Deaths))
+
+```
+
+```{r}
+
+X_df <- cbind(model.matrix(model_formula, model_data.train) %>%
+      as.tibble())
+
+X_df.qr <- qr(X_df)
+
+```
+
+```{r}
+
+X_df.qr$rank
+
+kappa(X_df)
+```
+
+```{r}
+ncol(X_df)
+```
+
+
+```{r}
+# 
+# X_mat <- model.matrix(
+#   model_formula,
+#   data=model_data.train
+# )
+# 
+keep_idx <- vapply(keep_model_terms,
+                   function(x) { which(x == colnames(X_mat))}, 0)
+
+stan_formula <- as.formula(
+  paste0("Number_Of_Deaths ~ ", paste(paste0("`", colnames(X_mat.keep), "`"), collapse = " + "), " - 1"))
+
+
+glm_fit_final.stan <- stan_glm(
+  stan_formula,
+  data = cbind(
+    model.matrix(model_formula, model_data.train) %>%
+      as.tibble(),
+    tibble(
+      Number_Of_Deaths = model_data.train$Number_Of_Deaths
+    )),
+  offset=log(model_data.train$Expected_Deaths),
+  family=poisson(),
+  iter=2000,
+  QR=T,
+  chains=4,
+  algorithm = "sampling"
+)
+
+summary(glm_fit_final.stan, digits=3)
+
+```
+
+
+
+```{r}
+
+X_df <- model.matrix(model_formula, model_data.test) %>%
+      as.tibble()
+
+predicted_deaths <- rstanarm::posterior_predict(
+  glm_fit_final.stan, 
+        offset=log(model_data.test$Expected_Deaths),
+        newdata=X_df)
+
+plot_data <- data.frame(
+  ae_pp_draw = (sum(model_data.test$Number_Of_Deaths) / predicted_deaths %>% rowSums()) 
+)
+
+ggplot(plot_data, aes(x=ae_pp_draw)) +
+  geom_density() + 
+  geom_vline(xintercept=1)
+
+```
+
+
+```{r}
+
+quantile(plot_data$ae_pp_draw, probs=seq(0, 1, by=0.1))
+
+```
+
+
+```{r}
+
+predicted_deaths <- rstanarm::posterior_predict(
+  glm_fit_final.stan, 
+        offset=log(model_data.test$Expected_Deaths),
+        newdata=model_data.test)
+
+plot_data <- data.frame(
+  ae_pp_draw = (sum(model_data.test$Number_Of_Deaths) / predicted_deaths %>% rowSums()) 
+)
+
+ggplot(plot_data, aes(x=ae_pp_draw)) +
+  geom_density() + 
+  geom_vline(xintercept=1)
+
+```
+
+
+
+
+```{r}
+
+model_data.test["Predicted_Deaths"] <- predict(
+  glm_fit_2,
+  newdata = model_data.test,
+  type = "response"
+)
+
+rpart_model <- rpart(
+  as.matrix(model_data.test[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class +
+    Smoker_Status + Face_Amount + Calendar_Year,
+    data=model_data.test,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3))
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+
+```
+
+
+
+
+## Appendix
+
+### Methodology Note 1
+
+### Methodology Note 2
+
+### Methodology Note 3
+
+### Additional Resources

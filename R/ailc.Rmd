@@ -43,6 +43,8 @@ Load [rpart]() and [tidyverse]().
 
 ```{r warning=F, message=F}
 
+options(mc.cores = 4)
+
 load_pkgs <- function(pkgs) {
   for (p in pkgs) {
     if (!require(p, character.only = TRUE)) {
@@ -52,7 +54,8 @@ load_pkgs <- function(pkgs) {
   }
 }
 
-load_pkgs(c("rpart", "rpart.plot", "knitr", "kableExtra", "tidyverse"))
+load_pkgs(c("rpart", "rpart.plot", "knitr", "kableExtra", 
+            "tidyverse", "rstanarm", "visreg", "bayesplot"))
 
 ```
 
@@ -543,6 +546,7 @@ prepare_modeling_data <- function(df, table_mapping) {
         Face_Amount_Band,
         `2500000+` = c("2500000-4999999", "5000000-9999999", "10000000+")
       ),
+      Face_Amount_Band_Int = as.integer(Face_Amount_Band),
       Expected_Deaths = Policies_Exposed * qx)
 }
 
@@ -825,7 +829,6 @@ summary(glm_fit)
 
 To check the model's output, and find the next term (or terms) to add to the model,
 
-
 ```{r}
 
 model_data.train["Predicted_Deaths"] <- predict(
@@ -847,7 +850,200 @@ rpart_model %>%
 
 ```
 
-Issue year stands out as  
+Issue year stands out, in particular there is an increasing pattern of A/E by issue year.
+Using the above chart, we see the following pattern:
+
+| Issue Year | A/E |
+|------------|-----|
+| < 1991     | 93.7%|
+| 1991-1999  | 103% |
+| 200+       | 120% |
+
+And confirming the pattern graphically, we see that a (log) linear pattern exists,
+so no spline will be necessary for this term.
+
+```{r}
+
+plot_data <- model_data.train %>%
+  group_by(Issue_Year) %>%
+  summarise(
+    Number_Of_Deaths = sum(Number_Of_Deaths),
+    Predicted_Deaths = sum(Predicted_Deaths),
+    `Actual-to-Predicted` = log(Number_Of_Deaths / Predicted_Deaths),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(
+    poi_dev = dpois(Number_Of_Deaths, Predicted_Deaths)
+  )
+
+ggplot(plot_data, aes(x=Issue_Year, y=`Actual-to-Predicted`)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab("Log Actual to Modeled") +
+  theme_minimal() +
+  ggtitle("Issue Year vs. Model")
+
+```
+
+```{r}
+
+visreg(glm_fit, xvar=)
+
+```
+
+
+#### Refine Model
+
+```{r}
+
+glm_fit_2 <- glm(Number_Of_Deaths ~
+    offset(log(Expected_Deaths)) +
+    splines::ns(Attained_Age, knots=c(80)):splines::ns(Face_Amount, knots=c(200e3, 500e3))
+    + Issue_Year
+    + Calendar_Year - 1,
+  data=model_data.train,
+  family = poisson()
+)
+
+summary(glm_fit_2)
+
+```
+
+
+```{r}
+
+model_data.train["Predicted_Deaths"] <- predict(
+  glm_fit_2,
+  newdata = model_data.train,
+  type = "response"
+)
+
+rpart_model <- rpart(
+  as.matrix(model_data.train[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class +
+    Smoker_Status + Face_Amount + Calendar_Year,
+    data=model_data.train,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3))
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
+
+```{r}
+
+model_data.test$Predicted_Deaths <- predict(
+  glm_fit_2,
+  newdata=model_data.test,
+  type="response"
+)
+
+sum(model_data.test$Number_Of_Deaths) / sum(model_data.test$Predicted_Deaths)
+
+```
+
+### Bayesian Model: Evaluatate Test Set
+
+```{r}
+
+model_data.train %>%
+  group_by(Calendar_Year) %>%
+  summarise(Number_of_Deaths = sum(Number_Of_Deaths))
+
+```
+
+
+```{r}
+
+model_formula <- Number_Of_Deaths ~ 
+  splines::ns(Attained_Age, knots=c(80)):splines::ns(Face_Amount, knots=c(200e3, 500e3)) + 
+  Issue_Year + 
+  Calendar_Year - 1
+
+final_model_data.train <- model_data.train 
+
+glm_fit_final.stan <- stan_glm(
+  model_formula,
+  family = poisson(),
+  offset=log(final_model_data.train$Expected_Deaths),
+  data=final_model_data.train,
+  iter=2000,
+  chains=4,
+  algorithm="sampling",
+  QR=T
+)
+
+summary(glm_fit_final.stan, digits=3)
+
+```
+
+
+
+```{r}
+
+predicted_deaths <- rstanarm::posterior_predict(
+  glm_fit_final.stan, 
+        offset=log(model_data.test$Expected_Deaths),
+        newdata=model_data.test)
+
+plot_data <- data.frame(
+  ae_pp_draw = (sum(model_data.test$Number_Of_Deaths) / predicted_deaths %>% rowSums()) 
+)
+
+ggplot(plot_data, aes(x=ae_pp_draw)) +
+  geom_density() + 
+  geom_vline(xintercept=1)
+
+```
+
+```{r}
+
+quantile(plot_data$ae_pp_draw, probs=seq(0,1, by=0.1))
+
+```
+
+
+```{r}
+
+predicted_deaths <- rstanarm::posterior_predict(
+  glm_fit_final.stan, 
+        offset=log(model_data.test$Expected_Deaths),
+        newdata=model_data.test)
+
+plot_data <- data.frame(
+  ae_pp_draw = (sum(model_data.test$Number_Of_Deaths) / predicted_deaths %>% rowSums()) 
+)
+
+ggplot(plot_data, aes(x=ae_pp_draw)) +
+  geom_density() + 
+  geom_vline(xintercept=1)
+
+```
+
+
+
+```{r}
+
+model_data.test["Predicted_Deaths"] <- predict(
+  glm_fit_2,
+  newdata = model_data.test,
+  type = "response"
+)
+
+rpart_model <- rpart(
+  as.matrix(model_data.test[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
+    Issue_Age + Issue_Year + Attained_Age + Gender + Preferred_Class +
+    Smoker_Status + Face_Amount + Calendar_Year,
+    data=model_data.test,
+    method="poisson",
+    control=rpart.control(cp=0.0001, maxdepth=3))
+
+rpart_model %>%
+  rpart.plot(digits=3)
+
+```
 
 
 ## Appendix
