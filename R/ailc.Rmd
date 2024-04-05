@@ -55,7 +55,8 @@ load_pkgs <- function(pkgs) {
 }
 
 load_pkgs(c("rpart", "rpart.plot", "knitr", "kableExtra", 
-            "tidyverse", "rstanarm", "visreg", "bayesplot"))
+            "tidyverse", "rstanarm", "visreg", "bayesplot",
+            "glmnet", "xgboost"))
 
 ```
 
@@ -899,9 +900,14 @@ visreg(glm_fit, xvar=)
 
 glm_fit_2 <- glm(Number_Of_Deaths ~
     offset(log(Expected_Deaths)) +
-    splines::ns(Attained_Age, knots=c(80)):splines::ns(Face_Amount, knots=c(200e3, 500e3))
+    # splines::ns(Attained_Age, knots=c(80)):splines::ns(Face_Amount, knots=c(200e3, 500e3)) + 
+    # Issue_Year + 
+    # Calendar_Year - 1,
+      splines::ns(Attained_Age, knots=c(45, 60, 85))*splines::ns(Face_Amount, knots=c(37.5e3, 200e3, 500e3))
     + Issue_Year
-    + Calendar_Year - 1,
+    + splines::ns(Duration, knots=c(20, 30))
+    + splines::ns(Issue_Age, knots=c(70)) +
+    + Calendar_Year,
   data=model_data.train,
   family = poisson()
 )
@@ -936,20 +942,110 @@ rpart_model %>%
 
 ```{r}
 
-xgboost::xgb.DMatrix(
-  
+library(recipes)
+
+xgb.receipe <- recipe(~ Calendar_Year + Gender + Preferred_Class +
+         Issue_Age + Attained_Age + Issue_Year + Duration + Face_Amount, model_data.train) %>%
+  step_dummy(Gender, one_hot = F) %>%
+  prep(model_data.train, retain=F)
+
+model_data.train.xgb <- bake(xgb.receipe, model_data.train) %>%
+  as.matrix()
+
+xgb_data <- xgboost::xgb.DMatrix(
+  data = model_data.train.xgb,
+  label = model_data.train$Number_Of_Deaths,
+  base_margin = log(model_data.train$Predicted_Deaths)
+)
+
+xgb_params <- list(
+  "eta" = 0.1,
+  "gamma" = 3,
+  "max_depth" = 3,
+  "subsample" = 0.75,
+  "colsample_bytree" = 0.75,
+  "objective" = "count:poisson"
+)
+
+xgb_model <- xgboost::xgb.train(
+  params = xgb_params,
+  data = xgb_data,
+  nround = 50
+)
+
+xgboost::xgb.plot.shap(
+  data=model_data.train.xgb, model=xgb_model, top_n = 3
 )
 
 ```
 
+### GLMnet
+
+```{r}
+
+glmnet_aic <- function(fit) {
+  tLL <- fit$nulldev - deviance(fit)
+  k <- fit$df
+  n <- fit$nobs
+  -tLL+2*k+2*k*(k+1)/(n-k-1)
+}
+
+```
+
+
+```{r}
+
+model_formula <- Number_Of_Deaths ~ 
+  splines::ns(Attained_Age, knots=c(45, 60, 85))*splines::ns(Face_Amount, knots=c(37.5e3, 200e3, 500e3)) + 
+  Issue_Year + 
+  splines::ns(Issue_Age, knots=c(70)) +
+  Calendar_Year - 1
+
+X_mat <- model.matrix(
+  model_formula,
+  data=model_data.train
+)
+
+glm_fit_2 <- glmnet(
+  X_mat,
+  model_data.train$Number_Of_Deaths,
+  family="poisson",
+  offset=log(model_data.train$Expected_Deaths),
+  relax=T,
+  intercept=T
+)
+
+glm_fit_2.aic <- glmnet_aic(glm_fit_2$relaxed)
+
+plot(
+  1:length(glm_fit_2$lambda),
+  glm_fit_2.aic,
+  type="l"
+)
+
+
+```
+
+```{r}
+
+best_aic_idx <- min(which(glm_fit_2.aic == min(glm_fit_2.aic)))
+
+keep_model_terms <- glm_fit_2$relaxed$beta[, best_aic_idx]
+
+keep_model_terms <- names(keep_model_terms)[which(abs(keep_model_terms) > 0)]
+keep_model_terms
+
+```
 
 ### Check Test Set
 
 ```{r}
 
 model_data.test$Predicted_Deaths <- predict(
-  glm_fit_2,
-  newdata=model_data.test,
+  glm_fit_2$relaxed,
+  newx=model.matrix(model_formula, model_data.test),
+  newoffset=log(model_data.test$Expected_Deaths),
+  s=glm_fit_2$lambda[best_aic_idx],
   type="response"
 )
 
@@ -970,21 +1066,41 @@ model_data.train %>%
 
 ```{r}
 
-model_formula <- Number_Of_Deaths ~ 
-  splines::ns(Attained_Age, knots=c(80)):splines::ns(Face_Amount, knots=c(200e3, 500e3)) + 
-  Issue_Year + 
-  Calendar_Year - 1
+X_df <- cbind(
+  model.matrix(model_formula, model_data.train) %>% as_tibble())
 
-final_model_data.train <- model_data.train 
+X_df.keep <- X_df %>%
+  select(any_of(keep_model_terms))
+
+list(
+  "kappa (X_df.keep)" = kappa(X_df.keep %>% as.matrix()),
+  "ratio (X_df / X_df.keep)" = kappa(X_df %>% as.matrix()) / kappa(X_df.keep %>% as.matrix())
+)
+
+```
+
+
+```{r}
+
+
+stan_formula <- as.formula(
+  paste0("Number_Of_Deaths ~ ", paste(paste0("`", colnames(X_df.keep), "`"), collapse = " + ")))
+
+X_df.stan <- cbind(
+  X_df.keep,
+  model_data.train %>% select(Number_Of_Deaths)
+)
+
 
 glm_fit_final.stan <- stan_glm(
-  model_formula,
+  stan_formula,
   family = poisson(),
-  offset=log(final_model_data.train$Expected_Deaths),
-  data=final_model_data.train,
+  offset=log(model_data.train$Expected_Deaths),
+  data=X_df.stan,
   iter=2000,
   chains=4,
   algorithm="sampling",
+  adapt_delta = 0.93,
   QR=T
 )
 
@@ -996,10 +1112,13 @@ summary(glm_fit_final.stan, digits=3)
 
 ```{r}
 
+X_df <- model.matrix(model_formula, model_data.test) %>%
+      as.tibble()
+
 predicted_deaths <- rstanarm::posterior_predict(
   glm_fit_final.stan, 
         offset=log(model_data.test$Expected_Deaths),
-        newdata=model_data.test)
+        newdata=X_df)
 
 plot_data <- data.frame(
   ae_pp_draw = (sum(model_data.test$Number_Of_Deaths) / predicted_deaths %>% rowSums()) 
@@ -1008,6 +1127,7 @@ plot_data <- data.frame(
 ggplot(plot_data, aes(x=ae_pp_draw)) +
   geom_density() + 
   geom_vline(xintercept=1)
+
 
 ```
 

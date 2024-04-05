@@ -907,9 +907,10 @@ glmnet_aic <- function(fit) {
 
 ```{r}
 
-model_formula <- Number_Of_Deaths ~ splines::ns(Issue_Age, knots=c(60)) * splines::ns(Face_Amount, knots=c(125000)) +
+model_formula <- Number_Of_Deaths ~ 
+    splines::ns(Issue_Age, knots=c(50, 75)) * splines::ns(Face_Amount, knots=c(17.5e3, 75e3)) +
     splines::ns(Attained_Age, knots=c(65)) +
-    Issue_Age:splines::ns(Issue_Year, knots=c(2002)) +
+    splines::ns(Issue_Age, knots=c()):splines::ns(Issue_Year, knots=c(2002)) +
     Preferred_Class * Gender - 1
 
 X_mat <- model.matrix(
@@ -960,7 +961,7 @@ drop_model_terms
 
 rpart_model <- rpart(
   as.matrix(model_data.train[,c("Predicted_Deaths","Number_Of_Deaths")]) ~
-    Issue_Year,
+    Issue_Age,
     data=model_data.train,
     method="poisson",
     control=rpart.control(cp=0.0001, maxdepth=3))
@@ -986,6 +987,67 @@ sum(model_data.test$Number_Of_Deaths) / sum(model_data.test$Predicted_Deaths)
 
 ```
 
+```{r}
+
+library(recipes)
+
+xgb.receipe <- recipe(~ Calendar_Year + Gender + Preferred_Class +
+         Issue_Age + Attained_Age + Issue_Year + Duration + Face_Amount, model_data.train) %>%
+  step_dummy(Gender, one_hot = F) %>%
+  prep(model_data.train, retain=F)
+
+model_data.train.xgb <- bake(xgb.receipe, model_data.train) %>%
+  as.matrix()
+
+xgb_data <- xgboost::xgb.DMatrix(
+  data = model_data.train.xgb,
+  label = model_data.train$Number_Of_Deaths,
+  base_margin = log(model_data.train$Predicted_Deaths)
+)
+
+```
+
+```{r}
+
+xgb_params <- list(
+  "eta" = 0.1,
+  "gamma" = 3,
+  "max_depth" = 3,
+  "subsample" = 0.75,
+  "colsample_bytree" = 0.75,
+  "objective" = "count:poisson"
+)
+
+
+```
+
+
+```{r}
+
+xgb_model <- xgboost::xgb.train(
+  params = xgb_params,
+  data = xgb_data,
+  nround = 50
+)
+
+```
+
+
+```{r}
+
+sum(model_data.train$Number_Of_Deaths) / sum(predict(xgb_model, xgb_data))
+
+```
+
+```{r}
+
+xgboost::xgb.plot.shap(
+  data=model_data.train.xgb, model=xgb_model, top_n = 5
+)
+
+```
+
+
 ### Bayesian Model: Evaluatate Test Set
 
 ```{r}
@@ -998,52 +1060,42 @@ model_data.train %>%
 
 ```{r}
 
-X_df <- cbind(model.matrix(model_formula, model_data.train) %>%
-      as.tibble())
+X_df <- cbind(
+  model.matrix(model_formula, model_data.train) %>% as.tibble())
 
-X_df.qr <- qr(X_df)
+X_df.keep <- X_df %>%
+  select(any_of(keep_model_terms))
+
+kappa(X_df %>% as.matrix())
 
 ```
 
 ```{r}
 
-X_df.qr$rank
+kappa(X_df.keep %>% as.matrix())
 
-kappa(X_df)
+
 ```
 
 ```{r}
-ncol(X_df)
-```
-
-
-```{r}
-# 
-# X_mat <- model.matrix(
-#   model_formula,
-#   data=model_data.train
-# )
-# 
-keep_idx <- vapply(keep_model_terms,
-                   function(x) { which(x == colnames(X_mat))}, 0)
 
 stan_formula <- as.formula(
-  paste0("Number_Of_Deaths ~ ", paste(paste0("`", colnames(X_mat.keep), "`"), collapse = " + "), " - 1"))
+  paste0("Number_Of_Deaths ~ ", paste(paste0("`", colnames(X_df.keep), "`"), collapse = " + "), " - 1"))
 
+X_df.stan <- cbind(
+  X_df.keep,
+  model_data.train %>% select(Number_Of_Deaths)
+)
 
 glm_fit_final.stan <- stan_glm(
   stan_formula,
-  data = cbind(
-    model.matrix(model_formula, model_data.train) %>%
-      as.tibble(),
-    tibble(
-      Number_Of_Deaths = model_data.train$Number_Of_Deaths
-    )),
+  data = X_df.stan,
   offset=log(model_data.train$Expected_Deaths),
   family=poisson(),
   iter=2000,
   QR=T,
   chains=4,
+  adapt_delta = 0.93,
   algorithm = "sampling"
 )
 
@@ -1081,31 +1133,13 @@ quantile(plot_data$ae_pp_draw, probs=seq(0, 1, by=0.1))
 ```
 
 
-```{r}
-
-predicted_deaths <- rstanarm::posterior_predict(
-  glm_fit_final.stan, 
-        offset=log(model_data.test$Expected_Deaths),
-        newdata=model_data.test)
-
-plot_data <- data.frame(
-  ae_pp_draw = (sum(model_data.test$Number_Of_Deaths) / predicted_deaths %>% rowSums()) 
-)
-
-ggplot(plot_data, aes(x=ae_pp_draw)) +
-  geom_density() + 
-  geom_vline(xintercept=1)
-
-```
-
-
-
 
 ```{r}
 
 model_data.test["Predicted_Deaths"] <- predict(
   glm_fit_2,
-  newdata = model_data.test,
+  newx = model_data.test %>% as.matrix(),
+  newoffset = log(model_data.test$Expected_Deaths),
   type = "response"
 )
 
