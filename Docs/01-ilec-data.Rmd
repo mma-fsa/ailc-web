@@ -1,0 +1,101 @@
+# ILEC Data {#intro}
+
+## Overview
+
+This chapter introduces the [ILEC data](https://www.soa.org/resources/research-reports/2021/2017-mortality-experience/), which
+is an excellent mortality experience dataset provided by the SOA.  Since this dataset
+is fairly large, we'll use [DuckDB](https://duckdb.org/docs/api/r).
+
+Download and unzip the [CSV file](https://cdn-files.soa.org/research/ilec/ilec-2009-18-20210528.zip) on your computer to follow along with this and subsequent chapters. 
+
+## Technical Tools: DuckDB
+
+Working with large datasets in R can be frustrating. If you encounter frequent
+crashes, or painfully slow filtering operations, you've outgrown the built-in 
+dataframe functionality.  This is where DuckDB comes in, it allows you to use
+the familiar tidyverse coding style, while offloading the actual data processing
+to a library that can easily handle hundreds of gigabytes. Under the hood it uses 
+[columnar storage](https://en.wikipedia.org/wiki/Column-oriented_DBMS), making 
+it incredibly fast.
+
+Let's load and summarise the ILEC data using DuckDB.  
+
+```{r message=F}
+
+# install DuckDB into your R environment
+if (!require("duckdb")) {
+  install.packages("duckdb")
+  library(duckdb)
+}
+
+if (!require("tidyverse")) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+
+if (!require("knitr")) {
+  install.packages("knitr")
+  library(knitr)
+}
+
+# remove any existing connections, if they exist
+if (exists("duckdb_conn")) {
+  duckdb::duckdb_shutdown(duckdb_conn@driver)
+  duckdb::dbDisconnect(duckdb_conn)
+  rm(duckdb_conn)
+}
+
+# create a connection for duckdb
+duckdb_conn <- duckdb::dbConnect(duckdb::duckdb(), ":memory:");
+
+# set this to match your system's available memory
+suppressMessages({
+  ignore_result <- DBI::dbExecute(duckdb_conn, "SET memory_limit = '4GB'")
+})
+
+# create an R object (that behaves like an ordinary dataframe)
+# that allows us to work with the large ILEC CSV file.
+# change the "ILEC_CSV_FILEPATH" variable to match the location of
+# the file on your computer
+ILEC_CSV_FILEPATH <- "/mnt/data/ilec/ILEC 2009-18 20210528.csv"
+
+tbl_ilec_data <- tbl(duckdb_conn,
+                     sprintf("read_csv_auto('%s')", ILEC_CSV_FILEPATH))
+
+# print an exposures and death summary, note that the code is
+# exactly the same as the standard tidyverse syntax, except for
+# the call to collect(), which is explained later.
+tbl_ilec_data %>%
+  group_by(Observation_Year) %>%
+  summarise(
+    `Total Exposures` = sum(Policies_Exposed, na.rm=T),
+    `Total Deaths` = sum(Number_Of_Deaths, na.rm=T)
+  ) %>%
+  collect() %>%
+  kable(caption = "ILEC 2017 Data Summary")
+
+```
+
+On my fairly modest computer, summarizing the entire ILEC CSV took less than 10 seconds. Let's get a
+better look at the ILEC data by looking at the first 10 rows.
+
+<div style="overflow:scroll;">
+```{r echo=F}
+head(tbl_ilec_data) %>%
+  collect() %>%
+  knitr::kable() %>%
+  kableExtra::kable_styling()
+```
+</div>
+
+The best part about DuckDB is the syntax is exactly the same as the dplyr (tidyverse),
+so there is a wealth of information and examples of usage. The only difference, is 
+the final call to `collect()`.  This moves the data from DuckDB land into a standard
+R dataframe, which is often necessary for fitting models or working with other R libraries.
+It's important that you only call `collect()` after filtering or summarizing the data 
+down to the point that it will fit into your computer's memory without crashing.
+
+## Intuition: Experience Study Data Formats
+
+
+

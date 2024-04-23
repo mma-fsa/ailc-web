@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Chapter 2 ILEC Data | Adventures in Low Credibility</title>
+  <meta name="description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  <meta name="generator" content="bookdown 0.39 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Chapter 2 ILEC Data | Adventures in Low Credibility" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  <meta name="github-repo" content="rstudio/bookdown-demo" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Chapter 2 ILEC Data | Adventures in Low Credibility" />
+  
+  <meta name="twitter:description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  
+
+<meta name="author" content="Mike McPhee Anderson, FSA" />
+
+
+<meta name="date" content="2024-04-23" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="index.html"/>
+<link rel="next" href="ilec-data.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+<script src="libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
+<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">Adventures in Low Credibility</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="1" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="index.html"><a href="index.html#overview"><i class="fa fa-check"></i><b>1.1</b> Overview</a></li>
+<li class="chapter" data-level="1.2" data-path="index.html"><a href="index.html#technical-tools"><i class="fa fa-check"></i><b>1.2</b> Technical Tools</a></li>
+<li class="chapter" data-level="1.3" data-path="index.html"><a href="index.html#intuition-poisson-distribution"><i class="fa fa-check"></i><b>1.3</b> Intuition: Poisson Distribution</a></li>
+<li class="chapter" data-level="1.4" data-path="index.html"><a href="index.html#code-examples"><i class="fa fa-check"></i><b>1.4</b> Code examples</a>
+<ul>
+<li class="chapter" data-level="1.4.1" data-path="index.html"><a href="index.html#r-code"><i class="fa fa-check"></i><b>1.4.1</b> R code</a></li>
+<li class="chapter" data-level="1.4.2" data-path="index.html"><a href="index.html#google-colab"><i class="fa fa-check"></i><b>1.4.2</b> Google Colab</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="index.html"><a href="index.html#intro"><i class="fa fa-check"></i><b>2</b> ILEC Data</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>2.1</b> Overview</a></li>
+<li class="chapter" data-level="2.2" data-path="intro.html"><a href="intro.html#technical-tools-duckdb"><i class="fa fa-check"></i><b>2.2</b> Technical Tools: DuckDB</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="ilec-data.html"><a href="ilec-data.html"><i class="fa fa-check"></i><b>3</b> ILEC Data</a></li>
+<li class="chapter" data-level="4" data-path="methods.html"><a href="methods.html"><i class="fa fa-check"></i><b>4</b> Methods</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="methods.html"><a href="methods.html#math-example"><i class="fa fa-check"></i><b>4.1</b> math example</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="applications.html"><a href="applications.html"><i class="fa fa-check"></i><b>5</b> Applications</a>
+<ul>
+<li class="chapter" data-level="5.1" data-path="applications.html"><a href="applications.html#example-one"><i class="fa fa-check"></i><b>5.1</b> Example one</a></li>
+<li class="chapter" data-level="5.2" data-path="applications.html"><a href="applications.html#example-two"><i class="fa fa-check"></i><b>5.2</b> Example two</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="final-words.html"><a href="final-words.html"><i class="fa fa-check"></i><b>6</b> Final Words</a></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Adventures in Low Credibility</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="intro" class="section level1 hasAnchor" number="2">
+<h1><span class="header-section-number">Chapter 2</span> ILEC Data<a href="index.html#intro" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<div id="overview-1" class="section level2 hasAnchor" number="2.1">
+<h2><span class="header-section-number">2.1</span> Overview<a href="intro.html#overview-1" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>This chapter introduces the <a href="https://www.soa.org/resources/research-reports/2021/2017-mortality-experience/">ILEC data</a>, which
+is an excellent mortality experience dataset provided by the SOA. Since this dataset
+is fairly large, we’ll use <a href="https://duckdb.org/docs/api/r">DuckDB</a>.</p>
+<p>Download and unzip the <a href="https://cdn-files.soa.org/research/ilec/ilec-2009-18-20210528.zip">CSV file</a> on your computer to follow along with this and subsequent chapters.</p>
+</div>
+<div id="technical-tools-duckdb" class="section level2 hasAnchor" number="2.2">
+<h2><span class="header-section-number">2.2</span> Technical Tools: DuckDB<a href="intro.html#technical-tools-duckdb" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Working with large datasets in R can be frustrating. If you encounter frequent
+crashes, or painfully slow filtering operations, you’ve outgrown the built-in
+dataframe functionality. This is where DuckDB comes in, it allows you to use
+the familiar tidyverse coding style, while offloading the actual data processing
+to a library that can easily handle hundreds of gigabytes. Under the hood it uses
+<a href="https://en.wikipedia.org/wiki/Column-oriented_DBMS">columnar storage</a>, making
+it incredibly fast.</p>
+<p>Let’s load and summarise the ILEC data using DuckDB.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="intro.html#cb1-1" tabindex="-1"></a><span class="co"># install DuckDB into your R environment</span></span>
+<span id="cb1-2"><a href="intro.html#cb1-2" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;duckdb&quot;</span>)) {</span>
+<span id="cb1-3"><a href="intro.html#cb1-3" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;duckdb&quot;</span>)</span>
+<span id="cb1-4"><a href="intro.html#cb1-4" tabindex="-1"></a>  <span class="fu">library</span>(duckdb)</span>
+<span id="cb1-5"><a href="intro.html#cb1-5" tabindex="-1"></a>}</span>
+<span id="cb1-6"><a href="intro.html#cb1-6" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="intro.html#cb1-7" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;tidyverse&quot;</span>)) {</span>
+<span id="cb1-8"><a href="intro.html#cb1-8" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;tidyverse&quot;</span>)</span>
+<span id="cb1-9"><a href="intro.html#cb1-9" tabindex="-1"></a>  <span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-10"><a href="intro.html#cb1-10" tabindex="-1"></a>}</span>
+<span id="cb1-11"><a href="intro.html#cb1-11" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="intro.html#cb1-12" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;knitr&quot;</span>)) {</span>
+<span id="cb1-13"><a href="intro.html#cb1-13" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;knitr&quot;</span>)</span>
+<span id="cb1-14"><a href="intro.html#cb1-14" tabindex="-1"></a>  <span class="fu">library</span>(knitr)</span>
+<span id="cb1-15"><a href="intro.html#cb1-15" tabindex="-1"></a>}</span>
+<span id="cb1-16"><a href="intro.html#cb1-16" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="intro.html#cb1-17" tabindex="-1"></a><span class="co"># remove any existing connections, if they exist</span></span>
+<span id="cb1-18"><a href="intro.html#cb1-18" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">exists</span>(<span class="st">&quot;duckdb_conn&quot;</span>)) {</span>
+<span id="cb1-19"><a href="intro.html#cb1-19" tabindex="-1"></a>  duckdb<span class="sc">::</span><span class="fu">duckdb_shutdown</span>(duckdb_conn<span class="sc">@</span>driver)</span>
+<span id="cb1-20"><a href="intro.html#cb1-20" tabindex="-1"></a>  duckdb<span class="sc">::</span><span class="fu">dbDisconnect</span>(duckdb_conn)</span>
+<span id="cb1-21"><a href="intro.html#cb1-21" tabindex="-1"></a>  <span class="fu">rm</span>(duckdb_conn)</span>
+<span id="cb1-22"><a href="intro.html#cb1-22" tabindex="-1"></a>}</span>
+<span id="cb1-23"><a href="intro.html#cb1-23" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="intro.html#cb1-24" tabindex="-1"></a><span class="co"># create a connection for duckdb</span></span>
+<span id="cb1-25"><a href="intro.html#cb1-25" tabindex="-1"></a>duckdb_conn <span class="ot">&lt;-</span> duckdb<span class="sc">::</span><span class="fu">dbConnect</span>(duckdb<span class="sc">::</span><span class="fu">duckdb</span>(), <span class="st">&quot;:memory:&quot;</span>);</span>
+<span id="cb1-26"><a href="intro.html#cb1-26" tabindex="-1"></a></span>
+<span id="cb1-27"><a href="intro.html#cb1-27" tabindex="-1"></a><span class="co"># set this to match your system&#39;s available memory</span></span>
+<span id="cb1-28"><a href="intro.html#cb1-28" tabindex="-1"></a><span class="fu">suppressMessages</span>({</span>
+<span id="cb1-29"><a href="intro.html#cb1-29" tabindex="-1"></a>  ignore_result <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbExecute</span>(duckdb_conn, <span class="st">&quot;SET memory_limit = &#39;4GB&#39;&quot;</span>)</span>
+<span id="cb1-30"><a href="intro.html#cb1-30" tabindex="-1"></a>})</span>
+<span id="cb1-31"><a href="intro.html#cb1-31" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="intro.html#cb1-32" tabindex="-1"></a><span class="co"># create an R object (that behaves like an ordinary dataframe)</span></span>
+<span id="cb1-33"><a href="intro.html#cb1-33" tabindex="-1"></a><span class="co"># that allows us to work with the large ILEC CSV file.</span></span>
+<span id="cb1-34"><a href="intro.html#cb1-34" tabindex="-1"></a><span class="co"># change the &quot;ILEC_FILEPATH&quot; variable to match the location of</span></span>
+<span id="cb1-35"><a href="intro.html#cb1-35" tabindex="-1"></a><span class="co"># the file on your computer</span></span>
+<span id="cb1-36"><a href="intro.html#cb1-36" tabindex="-1"></a>ILEC_CSV_FILEPATH <span class="ot">&lt;-</span> <span class="st">&quot;/mnt/data/ilec/ILEC 2009-18 20210528.csv&quot;</span></span>
+<span id="cb1-37"><a href="intro.html#cb1-37" tabindex="-1"></a></span>
+<span id="cb1-38"><a href="intro.html#cb1-38" tabindex="-1"></a>tbl_ilec_data <span class="ot">&lt;-</span> <span class="fu">tbl</span>(duckdb_conn,</span>
+<span id="cb1-39"><a href="intro.html#cb1-39" tabindex="-1"></a>                     <span class="fu">sprintf</span>(<span class="st">&quot;read_csv_auto(&#39;%s&#39;)&quot;</span>, ILEC_CSV_FILEPATH))</span>
+<span id="cb1-40"><a href="intro.html#cb1-40" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="intro.html#cb1-41" tabindex="-1"></a><span class="co"># print an exposures and death summary, note that the code is</span></span>
+<span id="cb1-42"><a href="intro.html#cb1-42" tabindex="-1"></a><span class="co"># exactly the same as the standard tidyverse syntax, except for</span></span>
+<span id="cb1-43"><a href="intro.html#cb1-43" tabindex="-1"></a><span class="co"># the call to collect(), which is explain later.</span></span>
+<span id="cb1-44"><a href="intro.html#cb1-44" tabindex="-1"></a>tbl_ilec_data <span class="sc">%&gt;%</span></span>
+<span id="cb1-45"><a href="intro.html#cb1-45" tabindex="-1"></a>  <span class="fu">group_by</span>(Observation_Year) <span class="sc">%&gt;%</span></span>
+<span id="cb1-46"><a href="intro.html#cb1-46" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb1-47"><a href="intro.html#cb1-47" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Exposures</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Policies_Exposed, <span class="at">na.rm=</span>T),</span>
+<span id="cb1-48"><a href="intro.html#cb1-48" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Number_Of_Deaths, <span class="at">na.rm=</span>T)</span>
+<span id="cb1-49"><a href="intro.html#cb1-49" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb1-50"><a href="intro.html#cb1-50" tabindex="-1"></a>  <span class="fu">collect</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb1-51"><a href="intro.html#cb1-51" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;ILEC 2017 Data Summary&quot;</span>)</span></code></pre></div>
+<table>
+<caption><span id="tab:unnamed-chunk-1">Table 2.1: </span>ILEC 2017 Data Summary</caption>
+<thead>
+<tr class="header">
+<th align="right">Observation_Year</th>
+<th align="right">Total Exposures</th>
+<th align="right">Total Deaths</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">2011</td>
+<td align="right">57118520</td>
+<td align="right">563694</td>
+</tr>
+<tr class="even">
+<td align="right">2009</td>
+<td align="right">31322347</td>
+<td align="right">249865</td>
+</tr>
+<tr class="odd">
+<td align="right">2016</td>
+<td align="right">57921762</td>
+<td align="right">552127</td>
+</tr>
+<tr class="even">
+<td align="right">2012</td>
+<td align="right">51036427</td>
+<td align="right">537286</td>
+</tr>
+<tr class="odd">
+<td align="right">2010</td>
+<td align="right">40190513</td>
+<td align="right">412029</td>
+</tr>
+<tr class="even">
+<td align="right">2014</td>
+<td align="right">57552165</td>
+<td align="right">560393</td>
+</tr>
+<tr class="odd">
+<td align="right">2015</td>
+<td align="right">57907852</td>
+<td align="right">565853</td>
+</tr>
+<tr class="even">
+<td align="right">2018</td>
+<td align="right">26188701</td>
+<td align="right">360381</td>
+</tr>
+<tr class="odd">
+<td align="right">2013</td>
+<td align="right">57373029</td>
+<td align="right">554199</td>
+</tr>
+<tr class="even">
+<td align="right">2017</td>
+<td align="right">57346148</td>
+<td align="right">558579</td>
+</tr>
+</tbody>
+</table>
+<p>On my fairly modest computer, summarizing the entire ILEC CSV took less than 10 seconds. Let’s get a
+better look at the ILEC data by looking at the first 10 rows.</p>
+<div style="overflow:scroll;">
+<table class="table" style="color: black; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;">
+column00
+</th>
+<th style="text-align:right;">
+Observation_Year
+</th>
+<th style="text-align:right;">
+Preferred_Indicator
+</th>
+<th style="text-align:left;">
+Gender
+</th>
+<th style="text-align:left;">
+Smoker_Status
+</th>
+<th style="text-align:left;">
+Insurance_Plan
+</th>
+<th style="text-align:right;">
+Issue_Age
+</th>
+<th style="text-align:right;">
+Duration
+</th>
+<th style="text-align:right;">
+Attained_Age
+</th>
+<th style="text-align:left;">
+Age_Basis
+</th>
+<th style="text-align:left;">
+Face_Amount_Band
+</th>
+<th style="text-align:right;">
+Issue_Year
+</th>
+<th style="text-align:left;">
+Number_Of_Preferred_Classes
+</th>
+<th style="text-align:left;">
+Preferred_Class
+</th>
+<th style="text-align:left;">
+SOA_Anticipated_Level_Term_Period
+</th>
+<th style="text-align:left;">
+SOA_Guaranteed_Level_Term_Period
+</th>
+<th style="text-align:left;">
+SOA_Post_level_Term_Indicator
+</th>
+<th style="text-align:left;">
+Select_Ultimate_Indicator
+</th>
+<th style="text-align:right;">
+Number_Of_Deaths
+</th>
+<th style="text-align:right;">
+Death_Claim_Amount
+</th>
+<th style="text-align:right;">
+Policies_Exposed
+</th>
+<th style="text-align:right;">
+Amount_Exposed
+</th>
+<th style="text-align:right;">
+Expected_Death_QX7580E_by_Amount
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2001VBT_by_Amount
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2008VBT_by_Amount
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2008VBTLU_by_Amount
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2015VBT_by_Amount
+</th>
+<th style="text-align:right;">
+Expected_Death_QX7580E_by_Policy
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2001VBT_by_Policy
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2008VBT_by_Policy
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2008VBTLU_by_Policy
+</th>
+<th style="text-align:right;">
+Expected_Death_QX2015VBT_by_Policy
+</th>
+<th style="text-align:right;">
+ExpDeathQx2015VBTwMI_byPol
+</th>
+<th style="text-align:right;">
+ExpDeathQx2015VBTwMI_byAmt
+</th>
+<th style="text-align:right;">
+Cen2MomP1wMI_byAmt
+</th>
+<th style="text-align:right;">
+Cen2MomP2wMI_byAmt
+</th>
+<th style="text-align:right;">
+Cen3MomP1wMI_byAmt
+</th>
+<th style="text-align:right;">
+Cen3MomP2wMI_byAmt
+</th>
+<th style="text-align:right;">
+Cen3MomP3wMI_byAmt
+</th>
+<th style="text-align:right;">
+Cen2MomP2wMI_byPol
+</th>
+<th style="text-align:right;">
+Cen3MomP3wMI_byPol
+</th>
+<th style="text-align:right;">
+Cen2MomP1_byAmt
+</th>
+<th style="text-align:right;">
+Cen2MomP2_byAmt
+</th>
+<th style="text-align:right;">
+Cen3MomP1_byAmt
+</th>
+<th style="text-align:right;">
+Cen3MomP2_byAmt
+</th>
+<th style="text-align:right;">
+Cen3MomP3_byAmt
+</th>
+<th style="text-align:right;">
+Cen2MomP2_byPol
+</th>
+<th style="text-align:right;">
+Cen3MomP3_byPol
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:left;">
+NonSmoker
+</td>
+<td style="text-align:left;">
+Perm
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+ALB
+</td>
+<td style="text-align:left;">
+1-9999
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+Select
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1.123288
+</td>
+<td style="text-align:right;">
+5616.44
+</td>
+<td style="text-align:right;">
+4.71781
+</td>
+<td style="text-align:right;">
+1.965754
+</td>
+<td style="text-align:right;">
+1.516439
+</td>
+<td style="text-align:right;">
+1.516439
+</td>
+<td style="text-align:right;">
+1.235617
+</td>
+<td style="text-align:right;">
+0.0009436
+</td>
+<td style="text-align:right;">
+0.0003932
+</td>
+<td style="text-align:right;">
+0.0003033
+</td>
+<td style="text-align:right;">
+0.0003033
+</td>
+<td style="text-align:right;">
+0.0002471
+</td>
+<td style="text-align:right;">
+0.0002580
+</td>
+<td style="text-align:right;">
+1.290181
+</td>
+<td style="text-align:right;">
+6450.906
+</td>
+<td style="text-align:right;">
+1.481871
+</td>
+<td style="text-align:right;">
+3.225453e+07
+</td>
+<td style="text-align:right;">
+7.409352e+03
+</td>
+<td style="text-align:right;">
+1.70204
+</td>
+<td style="text-align:right;">
+1.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+6178.084
+</td>
+<td style="text-align:right;">
+1.359179
+</td>
+<td style="text-align:right;">
+3.089042e+07
+</td>
+<td style="text-align:right;">
+6.795892e+03
+</td>
+<td style="text-align:right;">
+1.495096e+00
+</td>
+<td style="text-align:right;">
+1.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:left;">
+NonSmoker
+</td>
+<td style="text-align:left;">
+Perm
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+ALB
+</td>
+<td style="text-align:left;">
+10000-24999
+</td>
+<td style="text-align:right;">
+2008
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+Select
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+4.882191
+</td>
+<td style="text-align:right;">
+52753.42
+</td>
+<td style="text-align:right;">
+44.31287
+</td>
+<td style="text-align:right;">
+18.463695
+</td>
+<td style="text-align:right;">
+14.243422
+</td>
+<td style="text-align:right;">
+14.243422
+</td>
+<td style="text-align:right;">
+11.605751
+</td>
+<td style="text-align:right;">
+0.0041010
+</td>
+<td style="text-align:right;">
+0.0017088
+</td>
+<td style="text-align:right;">
+0.0013182
+</td>
+<td style="text-align:right;">
+0.0013182
+</td>
+<td style="text-align:right;">
+0.0010741
+</td>
+<td style="text-align:right;">
+0.0011215
+</td>
+<td style="text-align:right;">
+12.118256
+</td>
+<td style="text-align:right;">
+134729.455
+</td>
+<td style="text-align:right;">
+30.949391
+</td>
+<td style="text-align:right;">
+1.550498e+09
+</td>
+<td style="text-align:right;">
+3.561728e+05
+</td>
+<td style="text-align:right;">
+81.81827
+</td>
+<td style="text-align:right;">
+3.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+129031.480
+</td>
+<td style="text-align:right;">
+28.386926
+</td>
+<td style="text-align:right;">
+1.484924e+09
+</td>
+<td style="text-align:right;">
+3.266833e+05
+</td>
+<td style="text-align:right;">
+7.187034e+01
+</td>
+<td style="text-align:right;">
+2.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:left;">
+NonSmoker
+</td>
+<td style="text-align:left;">
+Perm
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+ALB
+</td>
+<td style="text-align:left;">
+50000-99999
+</td>
+<td style="text-align:right;">
+2008
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+Select
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+2.104110
+</td>
+<td style="text-align:right;">
+105205.50
+</td>
+<td style="text-align:right;">
+88.37262
+</td>
+<td style="text-align:right;">
+36.821925
+</td>
+<td style="text-align:right;">
+28.405485
+</td>
+<td style="text-align:right;">
+28.405485
+</td>
+<td style="text-align:right;">
+23.145210
+</td>
+<td style="text-align:right;">
+0.0017675
+</td>
+<td style="text-align:right;">
+0.0007364
+</td>
+<td style="text-align:right;">
+0.0005681
+</td>
+<td style="text-align:right;">
+0.0005681
+</td>
+<td style="text-align:right;">
+0.0004629
+</td>
+<td style="text-align:right;">
+0.0004833
+</td>
+<td style="text-align:right;">
+24.167293
+</td>
+<td style="text-align:right;">
+1208364.632
+</td>
+<td style="text-align:right;">
+277.579610
+</td>
+<td style="text-align:right;">
+6.041823e+10
+</td>
+<td style="text-align:right;">
+1.387898e+07
+</td>
+<td style="text-align:right;">
+3188.21148
+</td>
+<td style="text-align:right;">
+1.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1157260.500
+</td>
+<td style="text-align:right;">
+254.597310
+</td>
+<td style="text-align:right;">
+5.786302e+10
+</td>
+<td style="text-align:right;">
+1.272987e+07
+</td>
+<td style="text-align:right;">
+2.800570e+03
+</td>
+<td style="text-align:right;">
+1.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:left;">
+NonSmoker
+</td>
+<td style="text-align:left;">
+Perm
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+ALB
+</td>
+<td style="text-align:left;">
+100000-249999
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+Select
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+24.172601
+</td>
+<td style="text-align:right;">
+2540167.03
+</td>
+<td style="text-align:right;">
+2133.74030
+</td>
+<td style="text-align:right;">
+889.058460
+</td>
+<td style="text-align:right;">
+685.845098
+</td>
+<td style="text-align:right;">
+685.845098
+</td>
+<td style="text-align:right;">
+558.836746
+</td>
+<td style="text-align:right;">
+0.0203050
+</td>
+<td style="text-align:right;">
+0.0084604
+</td>
+<td style="text-align:right;">
+0.0065266
+</td>
+<td style="text-align:right;">
+0.0065266
+</td>
+<td style="text-align:right;">
+0.0053180
+</td>
+<td style="text-align:right;">
+0.0055528
+</td>
+<td style="text-align:right;">
+583.514740
+</td>
+<td style="text-align:right;">
+63684388.416
+</td>
+<td style="text-align:right;">
+14629.266068
+</td>
+<td style="text-align:right;">
+7.387604e+12
+</td>
+<td style="text-align:right;">
+1.697044e+09
+</td>
+<td style="text-align:right;">
+389836.71566
+</td>
+<td style="text-align:right;">
+1.3e-06
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+60991049.586
+</td>
+<td style="text-align:right;">
+13418.030909
+</td>
+<td style="text-align:right;">
+7.075168e+12
+</td>
+<td style="text-align:right;">
+1.556537e+09
+</td>
+<td style="text-align:right;">
+3.424381e+05
+</td>
+<td style="text-align:right;">
+1.2e-06
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:left;">
+NonSmoker
+</td>
+<td style="text-align:left;">
+Perm
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+ALB
+</td>
+<td style="text-align:left;">
+250000-499999
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+Select
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1.010959
+</td>
+<td style="text-align:right;">
+252739.75
+</td>
+<td style="text-align:right;">
+212.30139
+</td>
+<td style="text-align:right;">
+88.458912
+</td>
+<td style="text-align:right;">
+68.239733
+</td>
+<td style="text-align:right;">
+68.239733
+</td>
+<td style="text-align:right;">
+55.602745
+</td>
+<td style="text-align:right;">
+0.0008492
+</td>
+<td style="text-align:right;">
+0.0003538
+</td>
+<td style="text-align:right;">
+0.0002730
+</td>
+<td style="text-align:right;">
+0.0002730
+</td>
+<td style="text-align:right;">
+0.0002224
+</td>
+<td style="text-align:right;">
+0.0002322
+</td>
+<td style="text-align:right;">
+58.058139
+</td>
+<td style="text-align:right;">
+14514534.647
+</td>
+<td style="text-align:right;">
+3334.207872
+</td>
+<td style="text-align:right;">
+3.628634e+12
+</td>
+<td style="text-align:right;">
+8.335520e+08
+</td>
+<td style="text-align:right;">
+191479.47913
+</td>
+<td style="text-align:right;">
+1.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+13900686.250
+</td>
+<td style="text-align:right;">
+3058.150975
+</td>
+<td style="text-align:right;">
+3.475172e+12
+</td>
+<td style="text-align:right;">
+7.645377e+08
+</td>
+<td style="text-align:right;">
+1.681983e+05
+</td>
+<td style="text-align:right;">
+0.0e+00
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2009
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:left;">
+NonSmoker
+</td>
+<td style="text-align:left;">
+Perm
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+ANB
+</td>
+<td style="text-align:left;">
+1-9999
+</td>
+<td style="text-align:right;">
+2008
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+N/A (Not Term)
+</td>
+<td style="text-align:left;">
+Select
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+5.468014
+</td>
+<td style="text-align:right;">
+27672.81
+</td>
+<td style="text-align:right;">
+25.73572
+</td>
+<td style="text-align:right;">
+11.345854
+</td>
+<td style="text-align:right;">
+8.578572
+</td>
+<td style="text-align:right;">
+8.578572
+</td>
+<td style="text-align:right;">
+6.918203
+</td>
+<td style="text-align:right;">
+0.0050853
+</td>
+<td style="text-align:right;">
+0.0022419
+</td>
+<td style="text-align:right;">
+0.0016951
+</td>
+<td style="text-align:right;">
+0.0016951
+</td>
+<td style="text-align:right;">
+0.0013670
+</td>
+<td style="text-align:right;">
+0.0014274
+</td>
+<td style="text-align:right;">
+7.223708
+</td>
+<td style="text-align:right;">
+36605.332
+</td>
+<td style="text-align:right;">
+9.555452
+</td>
+<td style="text-align:right;">
+1.857568e+08
+</td>
+<td style="text-align:right;">
+4.848995e+04
+</td>
+<td style="text-align:right;">
+12.65781
+</td>
+<td style="text-align:right;">
+4.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+35057.220
+</td>
+<td style="text-align:right;">
+8.764305
+</td>
+<td style="text-align:right;">
+1.779008e+08
+</td>
+<td style="text-align:right;">
+4.447520e+04
+</td>
+<td style="text-align:right;">
+1.111880e+01
+</td>
+<td style="text-align:right;">
+3.0e-07
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The best part about DuckDB is the syntax is exactly the same as the dplyr (tidyverse),
+so there is a wealth of resources.</p>
+
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="index.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="ilec-data.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/mma-fsa/ailc-web/edit/master/01-ilec-data.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": ["ailc-docs.pdf", "ailc-docs.epub"],
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/latest.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+</body>
+
+</html>

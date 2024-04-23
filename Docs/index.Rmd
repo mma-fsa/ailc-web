@@ -1,0 +1,106 @@
+--- 
+title: "Adventures in Low Credibility"
+author: "Mike McPhee Anderson, FSA"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output: bookdown::gitbook
+documentclass: book
+bibliography: [book.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+github-repo: rstudio/bookdown-demo
+description: "This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook."
+---
+
+# Introduction {#intro}
+
+## Overview 
+
+Most guides to predictive modeling focuses on a very narrow slice of
+the overall project, which is building the model itself. There are few guides, if
+any, that focus on the *practical* aspects of predictive modeling in insurance 
+settings.  This guide presents a first step in filling that gap, by
+presenting an *end-to-end* modeling exercise on real mortality data.
+
+Along the way, we'll learn the technical tools, but more importantly, some intuition. 
+Knowing how to copy code is not what makes you valuable as an actuary or data scientist, its
+the ability to clearly communicate with less technical stakeholders. It may be tempting to bee-line straight to the modeling chapter, 
+but I'd encourage you to spend some time on the intuition sections in each chapter, especially
+the below section on the Poisson distribution.
+
+## Technical Tools
+
+As an end-to-end guide, this book is as much focused on traditional actuarial tools
+like Excel and Tableau as it is on specific modeling techniques in R. Excel is the
+lingua franca for actuaries, so being able
+to present an interactive Excel worksheet that captures the intuition behind a
+modeling decision is a powerful communication tool.
+
+Specifically, the tools used in this guide are as follows:
+
+* DuckDB for data preparation
+
+* A tiny bit of Python for reading XML
+
+* R, ggplot, tidyverse, and recipes for data manipulation and plotting
+
+* xgboost and rpart for data analysis and model validation
+
+* glmnet for model building
+
+* rstanarm for model validation
+
+* Tableau for building an interactive visualization of model outputs, to present to stakeholders.
+
+* Excel for building interactive tools to help stakeholders with intuition
+
+## Intuition: Poisson Distribution
+
+To give you a sense of what to expect on the intuition side, let's take a moment to
+discuss the statistical cornerstone of this guide, the Poisson distribution. 
+
+Actuaries typically use the A/E ratio to evaluate their expected death assumptions.  When this ratio is near 100%, 
+actuaries are generally satisfied that their expected deaths assumption is correct and doesn't need to be changed.
+
+$$ \text{A/E Ratio} = \frac{\text{Actual Deaths}}{\text{Expected Deaths}} $$
+
+But does an A/E ratio of 125% contain enough information on its own to be useful? What if it is 5 actual deaths, when we expected 4?  Or it was 500 deaths, when we expected 400?  In the first scenario, that 1 extra death can certainly be dismissed as random chance, so there is no reason to assume our 4 expected deaths is incorrect.  The second scenario clearly requires an upward adjustment to our expected number of deaths. But what about 100 deaths to 80 expected? 
+
+The Poisson distribution is exactly the right tool to use to quantify this last deviation, if not all of them.  A better name for it would be the Actual to Expected distribution. Simply put, it's a credibility-aware replacement for the A/E ratio.  It tells us how probable or improbable our expected deaths assumption is, after observing the actual deaths.  
+
+$$
+\text{P(Actual Deaths = Expected Deaths)} \\ \sim Poisson(x=\text{Actual Deaths}, \lambda=\text{Expected Deaths})
+$$
+
+Let's plug in some actual number to see the resulting probabilities.  As the number of expected deaths grows, the probabilities get quite small because we are talking about exact equality.  For example 500 deaths exactly, not 501, or 499.
+
+<div style="text-align: center !important;">
+
+| Actual Deaths | Expected Deaths | Probability | Excel Formula | R Code |
+|---------------|-----------------|-------------|---------------| ------ |
+| 5             | 4               | 15.6%       | `=POISSON.DIST(5,4,FALSE)` | `dpois(5, 4)` |
+| 500           | 400             | 0.00001%    | `=POISSON.DIST(500,400,FALSE)` | `dpois(500,400)` |
+| 100           | 80              | 0.4%        | `=POISSON.DIST(100,80,FALSE)` | `dpois(100,80)` |
+
+</div>
+
+Probabilities are a powerful analysis tool because they all operate on the same *scale*.  If you have a 1% chance of winning a game, you can easily compare that to the probability of winning an entirely different game. The problem with the A/E ratio is that it only facilitates comparisons between groups of data that have roughly the same number of expected deaths.  When used in model fitting, probabilities allow the model to balance the fit over many different observations, some credible, and some not.
+
+Although we discussed some specifics of the Poisson distribution, here are some general best-practices for communication with actuaries:
+
+1. Don't be afraid to "rebrand" a statistical or modeling concept to better convey why it is used, like calling the Poisson Distribution the Actual-to-Expected Distribution.  You should mention the technical name at some point, but start with the rebranded name.
+
+2. Use examples relevant to the problem.  If you are talking about mortality, show deaths.  Use plausible numbers, and connect the solution to a problem in an easy to understand way.  Most experienced actuaries know that a 125% A/E isn't cause for concern when there are only 5 deaths, but show them a gray area example (like 80 deaths vs. 100).
+
+3. If possible, work an example in Excel to send to them.  Excel can be used to fit simple GLMs, calculate probabilities, and calculate arbitrary model predictions from GLM coefficients.  We saw here how to calculate Poisson distribution probabilities in Excel.
+
+## Code examples
+
+### R code
+
+TODO
+
+### Google Colab
+
+The preferred way to follow along with the code in this guide is Google Colab, which is a free data science notebook service offered by Google. Although Colab supports R, it's primary intended for Python users, and follows much of the same conventions as Jupyter Notebook.  It's clunky to us if you are unfamiliar with Jupyter, but it's the easiest way to follow along with the code examples in this guide.
+

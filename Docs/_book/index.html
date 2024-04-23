@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Adventures in Low Credibility</title>
+  <meta name="description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  <meta name="generator" content="bookdown 0.39 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Adventures in Low Credibility" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  <meta name="github-repo" content="rstudio/bookdown-demo" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Adventures in Low Credibility" />
+  
+  <meta name="twitter:description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  
+
+<meta name="author" content="Mike McPhee Anderson, FSA" />
+
+
+<meta name="date" content="2024-04-21" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+
+<link rel="next" href="intro.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+
+
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">Adventures in Low Credibility</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="1" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="index.html"><a href="index.html#overview"><i class="fa fa-check"></i><b>1.1</b> Overview</a></li>
+<li class="chapter" data-level="1.2" data-path="index.html"><a href="index.html#technical-tools"><i class="fa fa-check"></i><b>1.2</b> Technical Tools</a></li>
+<li class="chapter" data-level="1.3" data-path="index.html"><a href="index.html#intuition-poisson-distribution"><i class="fa fa-check"></i><b>1.3</b> Intuition: Poisson Distribution</a></li>
+<li class="chapter" data-level="1.4" data-path="index.html"><a href="index.html#code-examples"><i class="fa fa-check"></i><b>1.4</b> Code examples</a>
+<ul>
+<li class="chapter" data-level="1.4.1" data-path="index.html"><a href="index.html#r-code"><i class="fa fa-check"></i><b>1.4.1</b> R code</a></li>
+<li class="chapter" data-level="1.4.2" data-path="index.html"><a href="index.html#google-colab"><i class="fa fa-check"></i><b>1.4.2</b> Google Colab</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="index.html"><a href="index.html#intro"><i class="fa fa-check"></i><b>2</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>2.1</b> Technical Tools</a></li>
+<li class="chapter" data-level="2.2" data-path="intro.html"><a href="intro.html#intuition"><i class="fa fa-check"></i><b>2.2</b> Intuition</a></li>
+<li class="chapter" data-level="2.3" data-path="intro.html"><a href="intro.html#code-examples-1"><i class="fa fa-check"></i><b>2.3</b> Code examples</a>
+<ul>
+<li class="chapter" data-level="2.3.1" data-path="intro.html"><a href="intro.html#r-code-1"><i class="fa fa-check"></i><b>2.3.1</b> R code</a></li>
+<li class="chapter" data-level="2.3.2" data-path="intro.html"><a href="intro.html#google-colab-1"><i class="fa fa-check"></i><b>2.3.2</b> Google Colab</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="ilec-data.html"><a href="ilec-data.html"><i class="fa fa-check"></i><b>3</b> ILEC Data</a></li>
+<li class="chapter" data-level="4" data-path="methods.html"><a href="methods.html"><i class="fa fa-check"></i><b>4</b> Methods</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="methods.html"><a href="methods.html#math-example"><i class="fa fa-check"></i><b>4.1</b> math example</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="applications.html"><a href="applications.html"><i class="fa fa-check"></i><b>5</b> Applications</a>
+<ul>
+<li class="chapter" data-level="5.1" data-path="applications.html"><a href="applications.html#example-one"><i class="fa fa-check"></i><b>5.1</b> Example one</a></li>
+<li class="chapter" data-level="5.2" data-path="applications.html"><a href="applications.html#example-two"><i class="fa fa-check"></i><b>5.2</b> Example two</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="final-words.html"><a href="final-words.html"><i class="fa fa-check"></i><b>6</b> Final Words</a></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Adventures in Low Credibility</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="header">
+<h1 class="title">Adventures in Low Credibility</h1>
+<p class="author"><em>Mike McPhee Anderson, FSA</em></p>
+<p class="date"><em>2024-04-21</em></p>
+</div>
+<div id="intro" class="section level1 hasAnchor" number="1">
+<h1><span class="header-section-number">Chapter 1</span> Introduction<a href="index.html#intro" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<div id="overview" class="section level2 hasAnchor" number="1.1">
+<h2><span class="header-section-number">1.1</span> Overview<a href="index.html#overview" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Most guides to predictive modeling focuses on a very narrow slice of
+the overall project, which is building the model itself. There are few guides, if
+any, that focus on the <em>practical</em> aspects of predictive modeling in insurance
+settings. This guide presents a first step in filling that gap, by
+presenting an <em>end-to-end</em> modeling exercise on real mortality data.</p>
+<p>Along the way, we’ll learn the technical tools, but more importantly, some intuition.
+Knowing how to copy code is not what makes you valuable as an actuary or data scientist, its
+the ability to clearly communicate with less technical stakeholders. It may be tempting to bee-line straight to the modeling chapter,
+but I’d encourage you to spend some time on the intuition and communication materials, especially
+the below section on the Poisson distribution.</p>
+</div>
+<div id="technical-tools" class="section level2 hasAnchor" number="1.2">
+<h2><span class="header-section-number">1.2</span> Technical Tools<a href="index.html#technical-tools" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>As an end-to-end guide, this book is as much focused on traditional actuarial tools
+like Excel and Tableau as it is on specific modeling techniques in R. Excel is the
+lingua franca for actuaries, so being able
+to present an interactive Excel worksheet that captures the intuition behind a
+modeling decision is a powerful communication tool.</p>
+<p>Specifically, the tools used in this guide are as follows:</p>
+<ul>
+<li><p>DuckDB for data preparation</p></li>
+<li><p>A tiny bit of Python for reading XML</p></li>
+<li><p>R, ggplot, tidyverse, and recipes for data manipulation and plotting</p></li>
+<li><p>xgboost and rpart for data analysis and model validation</p></li>
+<li><p>glmnet for model building</p></li>
+<li><p>rstanarm for model validation</p></li>
+<li><p>Tableau for building an interactive visualization of model outputs, to present to stakeholders.</p></li>
+<li><p>Excel for building interactive tools to help stakeholders with intuition</p></li>
+</ul>
+</div>
+<div id="intuition-poisson-distribution" class="section level2 hasAnchor" number="1.3">
+<h2><span class="header-section-number">1.3</span> Intuition: Poisson Distribution<a href="index.html#intuition-poisson-distribution" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>To give you a sense of what to expect on the intuition side, let’s take a moment to
+discuss the statistical cornerstone of this guide, the Poisson distribution.</p>
+<p>Actuaries typically use the A/E ratio to evaluate their expected death assumptions. When this ratio is near 100%,
+actuaries are generally satisfied that their expected deaths assumption is correct and doesn’t need to be changed.</p>
+<p><span class="math display">\[ \text{A/E Ratio} = \frac{\text{Actual Deaths}}{\text{Expected Deaths}} \]</span></p>
+<p>But does an A/E ratio of 125% contain enough information on its own to be useful? What if it is 5 actual deaths, when we expected 4? Or it was 500 deaths, when we expected 400? In the first scenario, that 1 extra death can certainly be dismissed as random chance, so there is no reason to assume our 4 expected deaths is incorrect. The second scenario clearly requires an upward adjustment to our expected number of deaths. But what about 100 deaths to 80 expected?</p>
+<p>The Poisson distribution is exactly the right tool to use to quantify this last deviation, if not all of them. A better name for it would be the Actual to Expected distribution. Simply put, it’s a credibility-aware replacement for the A/E ratio. It tells us how probable or improbable our expected deaths assumption is, after observing the actual deaths.</p>
+<p><span class="math display">\[
+\text{P(Actual Deaths = Expected Deaths)} \\ \sim Poisson(x=\text{Actual Deaths}, \lambda=\text{Expected Deaths})
+\]</span></p>
+<p>Let’s plug in some actual number to see the resulting probabilities. As the number of expected deaths grows, the probabilities get quite small because we are talking about exact equality. For example 500 deaths exactly, not 501, or 499.</p>
+<div style="text-align: center !important;">
+<table>
+<colgroup>
+<col width="22%" />
+<col width="25%" />
+<col width="19%" />
+<col width="22%" />
+<col width="9%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Actual Deaths</th>
+<th>Expected Deaths</th>
+<th>Probability</th>
+<th>Excel Formula</th>
+<th>R Code</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>5</td>
+<td>4</td>
+<td>15.6%</td>
+<td><code>=POISSON.DIST(5,4,FALSE)</code></td>
+<td><code>dpois(5, 4)</code></td>
+</tr>
+<tr class="even">
+<td>500</td>
+<td>400</td>
+<td>0.00001%</td>
+<td><code>=POISSON.DIST(500,400,FALSE)</code></td>
+<td><code>dpois(500,400)</code></td>
+</tr>
+<tr class="odd">
+<td>100</td>
+<td>80</td>
+<td>0.4%</td>
+<td><code>=POISSON.DIST(100,80,FALSE)</code></td>
+<td><code>dpois(100,80)</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Probabilities are a powerful analysis tool because they all operate on the same <em>scale</em>. If you have a 1% chance of winning a game, you can easily compare that to the probability of winning an entirely different game. The problem with the A/E ratio is that it only facilitates comparisons between groups of data that have roughly the same number of expected deaths. When used in model fitting, probabilities allow the model to balance the fit over many different observations, some credible, and some not.</p>
+<p>Although we discussed some specifics of the Poisson distribution, here are some general best-practices for communication with actuaries:</p>
+<ol style="list-style-type: decimal">
+<li><p>Don’t be afraid to “rebrand” a statistical or modeling concept to better convey why it is used, like calling the Poisson Distribution the Actual-to-Expected Distribution. You should mention the technical name at some point, but start with the rebranded name.</p></li>
+<li><p>Use examples relevant to the problem. If you are talking about mortality, show deaths. Use plausible numbers, and connect the solution to a problem in an easy to understand way. Most experienced actuaries know that a 125% A/E isn’t cause for concern when there are only 5 deaths, but show them a gray area example (like 80 deaths vs. 100).</p></li>
+<li><p>If possible, work an example in Excel to send to them. Excel can be used to fit simple GLMs, calculate probabilities, and calculate arbitrary model predictions from GLM coefficients. We saw here how to calculate Poisson distribution probabilities in Excel.</p></li>
+</ol>
+</div>
+<div id="code-examples" class="section level2 hasAnchor" number="1.4">
+<h2><span class="header-section-number">1.4</span> Code examples<a href="index.html#code-examples" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div id="r-code" class="section level3 hasAnchor" number="1.4.1">
+<h3><span class="header-section-number">1.4.1</span> R code<a href="index.html#r-code" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>TODO</p>
+</div>
+<div id="google-colab" class="section level3 hasAnchor" number="1.4.2">
+<h3><span class="header-section-number">1.4.2</span> Google Colab<a href="index.html#google-colab" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>The preferred way to follow along with the code in this guide is Google Colab, which is a free data science notebook service offered by Google. Although Colab supports R, it’s primary intended for Python users, and follows much of the same conventions as Jupyter Notebook. It’s clunky to us if you are unfamiliar with Jupyter, but it’s the easiest way to follow along with the code examples in this guide.</p>
+
+</div>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+
+<a href="intro.html" class="navigation navigation-next navigation-unique" aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/mma-fsa/ailc-web/edit/master/index.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": ["ailc-docs.pdf", "ailc-docs.epub"],
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/latest.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+</body>
+
+</html>
