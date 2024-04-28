@@ -23,7 +23,7 @@
 <meta name="author" content="Mike McPhee Anderson, FSA" />
 
 
-<meta name="date" content="2024-04-23" />
+<meta name="date" content="2024-04-25" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -159,6 +159,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <ul>
 <li class="chapter" data-level="2.1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>2.1</b> Overview</a></li>
 <li class="chapter" data-level="2.2" data-path="intro.html"><a href="intro.html#technical-tools-duckdb"><i class="fa fa-check"></i><b>2.2</b> Technical Tools: DuckDB</a></li>
+<li class="chapter" data-level="2.3" data-path="intro.html"><a href="intro.html#intuition-experience-study-data-and-the-poisson-distribution"><i class="fa fa-check"></i><b>2.3</b> Intuition: Experience Study Data and the Poisson Distribution</a></li>
+<li class="chapter" data-level="2.4" data-path="intro.html"><a href="intro.html#technical-tools-parquet-files"><i class="fa fa-check"></i><b>2.4</b> Technical Tools: Parquet files</a></li>
 </ul></li>
 <li class="chapter" data-level="3" data-path="ilec-data.html"><a href="ilec-data.html"><i class="fa fa-check"></i><b>3</b> ILEC Data</a></li>
 <li class="chapter" data-level="4" data-path="methods.html"><a href="methods.html"><i class="fa fa-check"></i><b>4</b> Methods</a>
@@ -207,7 +209,7 @@ is fairly large, we’ll use <a href="https://duckdb.org/docs/api/r">DuckDB</a>.
 crashes, or painfully slow filtering operations, you’ve outgrown the built-in
 dataframe functionality. This is where DuckDB comes in, it allows you to use
 the familiar tidyverse coding style, while offloading the actual data processing
-to a library that can easily handle hundreds of gigabytes. Under the hood it uses
+to a library that can handle hundreds of gigabytes. Under the hood it uses
 <a href="https://en.wikipedia.org/wiki/Column-oriented_DBMS">columnar storage</a>, making
 it incredibly fast.</p>
 <p>Let’s load and summarise the ILEC data using DuckDB.</p>
@@ -244,7 +246,7 @@ it incredibly fast.</p>
 <span id="cb1-31"><a href="intro.html#cb1-31" tabindex="-1"></a></span>
 <span id="cb1-32"><a href="intro.html#cb1-32" tabindex="-1"></a><span class="co"># create an R object (that behaves like an ordinary dataframe)</span></span>
 <span id="cb1-33"><a href="intro.html#cb1-33" tabindex="-1"></a><span class="co"># that allows us to work with the large ILEC CSV file.</span></span>
-<span id="cb1-34"><a href="intro.html#cb1-34" tabindex="-1"></a><span class="co"># change the &quot;ILEC_FILEPATH&quot; variable to match the location of</span></span>
+<span id="cb1-34"><a href="intro.html#cb1-34" tabindex="-1"></a><span class="co"># change the &quot;ILEC_CSV_FILEPATH&quot; variable to match the location of</span></span>
 <span id="cb1-35"><a href="intro.html#cb1-35" tabindex="-1"></a><span class="co"># the file on your computer</span></span>
 <span id="cb1-36"><a href="intro.html#cb1-36" tabindex="-1"></a>ILEC_CSV_FILEPATH <span class="ot">&lt;-</span> <span class="st">&quot;/mnt/data/ilec/ILEC 2009-18 20210528.csv&quot;</span></span>
 <span id="cb1-37"><a href="intro.html#cb1-37" tabindex="-1"></a></span>
@@ -253,7 +255,7 @@ it incredibly fast.</p>
 <span id="cb1-40"><a href="intro.html#cb1-40" tabindex="-1"></a></span>
 <span id="cb1-41"><a href="intro.html#cb1-41" tabindex="-1"></a><span class="co"># print an exposures and death summary, note that the code is</span></span>
 <span id="cb1-42"><a href="intro.html#cb1-42" tabindex="-1"></a><span class="co"># exactly the same as the standard tidyverse syntax, except for</span></span>
-<span id="cb1-43"><a href="intro.html#cb1-43" tabindex="-1"></a><span class="co"># the call to collect(), which is explain later.</span></span>
+<span id="cb1-43"><a href="intro.html#cb1-43" tabindex="-1"></a><span class="co"># the call to collect(), which is explained later.</span></span>
 <span id="cb1-44"><a href="intro.html#cb1-44" tabindex="-1"></a>tbl_ilec_data <span class="sc">%&gt;%</span></span>
 <span id="cb1-45"><a href="intro.html#cb1-45" tabindex="-1"></a>  <span class="fu">group_by</span>(Observation_Year) <span class="sc">%&gt;%</span></span>
 <span id="cb1-46"><a href="intro.html#cb1-46" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
@@ -278,19 +280,19 @@ it incredibly fast.</p>
 <td align="right">563694</td>
 </tr>
 <tr class="even">
-<td align="right">2009</td>
-<td align="right">31322347</td>
-<td align="right">249865</td>
-</tr>
-<tr class="odd">
-<td align="right">2016</td>
-<td align="right">57921762</td>
-<td align="right">552127</td>
-</tr>
-<tr class="even">
 <td align="right">2012</td>
 <td align="right">51036427</td>
 <td align="right">537286</td>
+</tr>
+<tr class="odd">
+<td align="right">2013</td>
+<td align="right">57373029</td>
+<td align="right">554199</td>
+</tr>
+<tr class="even">
+<td align="right">2017</td>
+<td align="right">57346148</td>
+<td align="right">558579</td>
 </tr>
 <tr class="odd">
 <td align="right">2010</td>
@@ -313,14 +315,14 @@ it incredibly fast.</p>
 <td align="right">360381</td>
 </tr>
 <tr class="odd">
-<td align="right">2013</td>
-<td align="right">57373029</td>
-<td align="right">554199</td>
+<td align="right">2009</td>
+<td align="right">31322347</td>
+<td align="right">249865</td>
 </tr>
 <tr class="even">
-<td align="right">2017</td>
-<td align="right">57346148</td>
-<td align="right">558579</td>
+<td align="right">2016</td>
+<td align="right">57921762</td>
+<td align="right">552127</td>
 </tr>
 </tbody>
 </table>
@@ -1357,7 +1359,221 @@ Select
 </table>
 </div>
 <p>The best part about DuckDB is the syntax is exactly the same as the dplyr (tidyverse),
-so there is a wealth of resources.</p>
+so there is a wealth of information and examples of usage. The only difference, is
+the final call to <code>collect()</code>. This moves the data from DuckDB land into a standard
+R dataframe, which is often necessary for fitting models or working with other R libraries.
+It’s important that you only call <code>collect()</code> after filtering or summarizing the data
+down to the point that it will fit into your computer’s memory without crashing.</p>
+<p>You can try the above example for yourself in <a href="https://colab.research.google.com/drive/1BtoaFgwZD78PHfLvL9Q6uRXcs48vVNZs?usp=sharing">Google Colab</a>.
+The link will take you to to a notebook that contains the above code example. This notebook
+is <strong>much</strong> slower than other examples in this guide, since it must download a large data file
+and install a library from source code (DuckDB). It would probably be best to run this on
+your local computer.</p>
+</div>
+<div id="intuition-experience-study-data-and-the-poisson-distribution" class="section level2 hasAnchor" number="2.3">
+<h2><span class="header-section-number">2.3</span> Intuition: Experience Study Data and the Poisson Distribution<a href="intro.html#intuition-experience-study-data-and-the-poisson-distribution" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>There are three very important columns in an experience study: exposures, deaths, and
+the expected basis. Let’s translate this into the language of statistics, with some
+important details about the Poisson distribution.</p>
+<p>The Poisson distribution expects <strong>counts</strong>, so the actual number of deaths must be a non-negative integer.
+However, this requirement does not apply to the expected deaths, so this does not need to be a whole number.</p>
+<p>Another name for expected deaths is the <em>mean</em> of the Poisson distribution, which
+is commonly referred to as <span class="math inline">\(\lambda\)</span> (lambda). The expected mortality rate is
+called <span class="math inline">\(q_x\)</span>.</p>
+<p><span class="math display">\[
+\lambda = \text{Expected Deaths} = \text{Exposure} \times q_x
+\]</span></p>
+<p>The actual deaths is usually called the <em>observed</em> number of deaths, and is denoted with <span class="math inline">\(y\)</span>.</p>
+<p><span class="math display">\[
+y = \text{Actual Deaths}
+\]</span></p>
+<p>There is an idiosyncratic practice to be aware of with exposure. In the event of death, actuaries typically
+extend the exposure of the record to be one full year. For example, if someone dies in July, this observation
+will be treated as one full year rather than just 6 months with one death. The thinking here is that we are
+interested in an annual rate with an upper bound of 1, and if a person died mid-year,
+the estimated rate would be over 1 (<span class="math inline">\(\frac{1 \text{ death}}{0.5 \text{ years}} = 2 \text{ deaths / yr}\)</span>).<br />
+This is a bit reductive, since in practice, we have enough data that a single death isn’t to push our mortality rates
+over 1, especially when a GLM is involved. This adjustment has minimal effects on the resulting rates,
+so it’s best to keep with the longstanding practice, and artificially upwardly
+adjust the exposure of any policy that died to be 1.</p>
+<p>For example, if a person died in the second year of the policy mid-year, we’d
+make the below adjustment</p>
+<table>
+<thead>
+<tr class="header">
+<th>Policy #</th>
+<th>Observation Year</th>
+<th>Number of Exposures</th>
+<th>Number of Deaths</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>2015</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>2016</td>
+<td>0.5 <span class="math inline">\(\implies\)</span> 1</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="technical-tools-parquet-files" class="section level2 hasAnchor" number="2.4">
+<h2><span class="header-section-number">2.4</span> Technical Tools: Parquet files<a href="intro.html#technical-tools-parquet-files" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Although we are now reading our CSV file using DuckDB, which is much faster
+than the built in <code>read.csv</code> or <code>read_csv</code>, it would be wise to store the rather
+large CSV file in something more efficient. Parquet (pronounced “par-kay”)
+files are widely used in data science and big data processing for
+exactly this purpose. There are a few reasons to do this:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>size</strong>: parquet files use efficient storage and compression. The largest
+bottleneck in processing data is usually reading data from the network or physical storage.</p></li>
+<li><p><strong>scale</strong>: you can fragment a single CSV file into multiple parquet files. This is especially
+important once your file sizes reach hundreds of gigabytes. This allows parallel processing
+(one computer using all it’s cpus) or distributed processing (multiple computers running in a cluster).</p></li>
+<li><p><strong>portability</strong>: Although CSVs are themselves very portable, implementations of CSV processors
+are not. For example, there is a special CSV format called “Excel CSV” that is made specifically
+to appease Excel’s CSV processor. R’s CSV processor has its own quirks. Parquet files store
+<em>column type</em> information in the file, so you can be sure that if another program or library
+is reading the parquet file, it will not attempt a conversion that corrupts the data.</p></li>
+</ol>
+<p>Let’s illustrate the point about CSV files with an example. There is a column that
+is largely numeric, which most CSV processors will attempt to process as numeric, that
+contains some rare non-numeric values. This causes the below error:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="intro.html#cb2-1" tabindex="-1"></a><span class="co"># this will cause an error</span></span>
+<span id="cb2-2"><a href="intro.html#cb2-2" tabindex="-1"></a>tbl_ilec_data <span class="sc">%&gt;%</span></span>
+<span id="cb2-3"><a href="intro.html#cb2-3" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb2-4"><a href="intro.html#cb2-4" tabindex="-1"></a>    <span class="at">Cen3MomP3wMI_byPol =</span> <span class="fu">sum</span>(Cen3MomP3wMI_byPol)</span>
+<span id="cb2-5"><a href="intro.html#cb2-5" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>## Error in `collect()`:
+## ! Failed to collect lazy table.
+## Caused by error:
+## ! rapi_execute: Failed to run query
+## Error: Conversion Error: CSV Error on Line: 2887951
+## Error when converting column &quot;Cen3MomP3wMI_byPol&quot;.
+## Could not convert string &quot;NA&quot; to &#39;INVALID&#39;
+## 
+##   file=/mnt/data/ilec/ILEC 2009-18 20210528.csv
+##   delimiter = , (Auto-Detected)
+##   quote = &quot; (Auto-Detected)
+##   escape = &quot; (Auto-Detected)
+##   new_line = \r\n (Auto-Detected)
+##   header = true (Auto-Detected)
+##   skip_rows = 0 (Auto-Detected)
+##   date_format =  (Auto-Detected)
+##   timestamp_format =  (Auto-Detected)
+##   null_padding=0
+##   sample_size=20480
+##   ignore_errors=0
+##   all_varchar=0</code></pre>
+<p>We’re going to have to do some tedious data scrubbing to get everything into the
+right type. Wouldn’t it be nice if it was already in a parquet, so this wouldn’t be a problem?
+Here is the rough order of operations:</p>
+<ol style="list-style-type: decimal">
+<li><p>Create a new link to the CSV, but this time, treat everything as characters.</p></li>
+<li><p>Replace the “NA” values with NULL in all columns</p></li>
+<li><p>Convert the string columns to the correct type (painfully and manually).</p></li>
+</ol>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="intro.html#cb4-1" tabindex="-1"></a>tbl_ilec_data_strs <span class="ot">&lt;-</span> <span class="fu">tbl</span>(duckdb_conn,</span>
+<span id="cb4-2"><a href="intro.html#cb4-2" tabindex="-1"></a>                     <span class="fu">sprintf</span>(<span class="st">&quot;read_csv(&#39;%s&#39;, all_varchar=T)&quot;</span>, ILEC_CSV_FILEPATH))</span>
+<span id="cb4-3"><a href="intro.html#cb4-3" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="intro.html#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="intro.html#cb4-5" tabindex="-1"></a>tbl_ilec_data_converted <span class="ot">&lt;-</span> tbl_ilec_data_strs <span class="sc">%&gt;%</span></span>
+<span id="cb4-6"><a href="intro.html#cb4-6" tabindex="-1"></a>  <span class="co"># replace strings that say &quot;NA&quot; with NULL, denoting a missing / invalid value</span></span>
+<span id="cb4-7"><a href="intro.html#cb4-7" tabindex="-1"></a>  <span class="fu">mutate_each</span>(<span class="sc">~</span> <span class="fu">case_when</span>(</span>
+<span id="cb4-8"><a href="intro.html#cb4-8" tabindex="-1"></a>    . <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;NA&quot;</span>, <span class="st">&quot;N/A (Not Term)&quot;</span>, <span class="st">&quot;Unknown&quot;</span>) <span class="sc">~</span> <span class="cn">NULL</span>,</span>
+<span id="cb4-9"><a href="intro.html#cb4-9" tabindex="-1"></a>    <span class="cn">TRUE</span> <span class="sc">~</span> .</span>
+<span id="cb4-10"><a href="intro.html#cb4-10" tabindex="-1"></a>  )) <span class="sc">%&gt;%</span></span>
+<span id="cb4-11"><a href="intro.html#cb4-11" tabindex="-1"></a>  <span class="co"># convert the numeric columns to be the right type of number</span></span>
+<span id="cb4-12"><a href="intro.html#cb4-12" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb4-13"><a href="intro.html#cb4-13" tabindex="-1"></a>    <span class="at">column00=</span><span class="fu">as.integer</span>(column00),</span>
+<span id="cb4-14"><a href="intro.html#cb4-14" tabindex="-1"></a>    <span class="at">Observation_Year=</span><span class="fu">as.integer</span>(Observation_Year),</span>
+<span id="cb4-15"><a href="intro.html#cb4-15" tabindex="-1"></a>    <span class="at">Preferred_Indicator=</span>Preferred_Indicator,</span>
+<span id="cb4-16"><a href="intro.html#cb4-16" tabindex="-1"></a>    <span class="at">Gender=</span>Gender,</span>
+<span id="cb4-17"><a href="intro.html#cb4-17" tabindex="-1"></a>    <span class="at">Smoker_Status=</span>Smoker_Status,</span>
+<span id="cb4-18"><a href="intro.html#cb4-18" tabindex="-1"></a>    <span class="at">Insurance_Plan=</span>Insurance_Plan,</span>
+<span id="cb4-19"><a href="intro.html#cb4-19" tabindex="-1"></a>    <span class="at">Issue_Age=</span><span class="fu">as.integer</span>(Issue_Age),</span>
+<span id="cb4-20"><a href="intro.html#cb4-20" tabindex="-1"></a>    <span class="at">Duration=</span><span class="fu">as.integer</span>(Duration),</span>
+<span id="cb4-21"><a href="intro.html#cb4-21" tabindex="-1"></a>    <span class="at">Attained_Age=</span><span class="fu">as.integer</span>(Attained_Age),</span>
+<span id="cb4-22"><a href="intro.html#cb4-22" tabindex="-1"></a>    <span class="at">Age_Basis=</span>Age_Basis,</span>
+<span id="cb4-23"><a href="intro.html#cb4-23" tabindex="-1"></a>    <span class="at">Face_Amount_Band=</span>Face_Amount_Band,</span>
+<span id="cb4-24"><a href="intro.html#cb4-24" tabindex="-1"></a>    <span class="at">Issue_Year=</span><span class="fu">as.integer</span>(Issue_Year),</span>
+<span id="cb4-25"><a href="intro.html#cb4-25" tabindex="-1"></a>    <span class="at">Number_Of_Preferred_Classes=</span><span class="fu">coalesce</span>(<span class="fu">as.integer</span>(Number_Of_Preferred_Classes), <span class="dv">0</span>),</span>
+<span id="cb4-26"><a href="intro.html#cb4-26" tabindex="-1"></a>    <span class="at">Preferred_Class=</span>Preferred_Class,</span>
+<span id="cb4-27"><a href="intro.html#cb4-27" tabindex="-1"></a>    <span class="at">SOA_Anticipated_Level_Term_Period=</span>SOA_Anticipated_Level_Term_Period,</span>
+<span id="cb4-28"><a href="intro.html#cb4-28" tabindex="-1"></a>    <span class="at">SOA_Guaranteed_Level_Term_Period=</span>SOA_Guaranteed_Level_Term_Period,</span>
+<span id="cb4-29"><a href="intro.html#cb4-29" tabindex="-1"></a>    <span class="at">SOA_Post_level_Term_Indicator=</span>SOA_Post_level_Term_Indicator,</span>
+<span id="cb4-30"><a href="intro.html#cb4-30" tabindex="-1"></a>    <span class="at">Select_Ultimate_Indicator=</span>Select_Ultimate_Indicator,</span>
+<span id="cb4-31"><a href="intro.html#cb4-31" tabindex="-1"></a>    <span class="at">Number_Of_Deaths=</span><span class="fu">as.double</span>(Number_Of_Deaths),</span>
+<span id="cb4-32"><a href="intro.html#cb4-32" tabindex="-1"></a>    <span class="at">Death_Claim_Amount=</span><span class="fu">as.double</span>(Death_Claim_Amount),</span>
+<span id="cb4-33"><a href="intro.html#cb4-33" tabindex="-1"></a>    <span class="at">Policies_Exposed=</span><span class="fu">as.double</span>(Policies_Exposed),</span>
+<span id="cb4-34"><a href="intro.html#cb4-34" tabindex="-1"></a>    <span class="at">Amount_Exposed=</span><span class="fu">as.double</span>(Amount_Exposed),</span>
+<span id="cb4-35"><a href="intro.html#cb4-35" tabindex="-1"></a>    <span class="at">Expected_Death_QX7580E_by_Amount=</span><span class="fu">as.double</span>(Expected_Death_QX7580E_by_Amount),</span>
+<span id="cb4-36"><a href="intro.html#cb4-36" tabindex="-1"></a>    <span class="at">Expected_Death_QX2001VBT_by_Amount=</span><span class="fu">as.double</span>(Expected_Death_QX2001VBT_by_Amount),</span>
+<span id="cb4-37"><a href="intro.html#cb4-37" tabindex="-1"></a>    <span class="at">Expected_Death_QX2008VBT_by_Amount=</span><span class="fu">as.double</span>(Expected_Death_QX2008VBT_by_Amount),</span>
+<span id="cb4-38"><a href="intro.html#cb4-38" tabindex="-1"></a>    <span class="at">Expected_Death_QX2008VBTLU_by_Amount=</span><span class="fu">as.double</span>(Expected_Death_QX2008VBTLU_by_Amount),</span>
+<span id="cb4-39"><a href="intro.html#cb4-39" tabindex="-1"></a>    <span class="at">Expected_Death_QX2015VBT_by_Amount=</span><span class="fu">as.double</span>(Expected_Death_QX2015VBT_by_Amount),</span>
+<span id="cb4-40"><a href="intro.html#cb4-40" tabindex="-1"></a>    <span class="at">Expected_Death_QX7580E_by_Policy=</span><span class="fu">as.double</span>(Expected_Death_QX7580E_by_Policy),</span>
+<span id="cb4-41"><a href="intro.html#cb4-41" tabindex="-1"></a>    <span class="at">Expected_Death_QX2001VBT_by_Policy=</span><span class="fu">as.double</span>(Expected_Death_QX2001VBT_by_Policy),</span>
+<span id="cb4-42"><a href="intro.html#cb4-42" tabindex="-1"></a>    <span class="at">Expected_Death_QX2008VBT_by_Policy=</span><span class="fu">as.double</span>(Expected_Death_QX2008VBT_by_Policy),</span>
+<span id="cb4-43"><a href="intro.html#cb4-43" tabindex="-1"></a>    <span class="at">Expected_Death_QX2008VBTLU_by_Policy=</span><span class="fu">as.double</span>(Expected_Death_QX2008VBTLU_by_Policy),</span>
+<span id="cb4-44"><a href="intro.html#cb4-44" tabindex="-1"></a>    <span class="at">Expected_Death_QX2015VBT_by_Policy=</span><span class="fu">as.double</span>(Expected_Death_QX2015VBT_by_Policy),</span>
+<span id="cb4-45"><a href="intro.html#cb4-45" tabindex="-1"></a>    <span class="at">ExpDeathQx2015VBTwMI_byPol=</span><span class="fu">as.double</span>(ExpDeathQx2015VBTwMI_byPol),</span>
+<span id="cb4-46"><a href="intro.html#cb4-46" tabindex="-1"></a>    <span class="at">ExpDeathQx2015VBTwMI_byAmt=</span><span class="fu">as.double</span>(ExpDeathQx2015VBTwMI_byAmt),</span>
+<span id="cb4-47"><a href="intro.html#cb4-47" tabindex="-1"></a>    <span class="at">Cen2MomP1wMI_byAmt=</span><span class="fu">as.double</span>(Cen2MomP1wMI_byAmt),</span>
+<span id="cb4-48"><a href="intro.html#cb4-48" tabindex="-1"></a>    <span class="at">Cen2MomP2wMI_byAmt=</span><span class="fu">as.double</span>(Cen2MomP2wMI_byAmt),</span>
+<span id="cb4-49"><a href="intro.html#cb4-49" tabindex="-1"></a>    <span class="at">Cen3MomP1wMI_byAmt=</span><span class="fu">as.double</span>(Cen3MomP1wMI_byAmt),</span>
+<span id="cb4-50"><a href="intro.html#cb4-50" tabindex="-1"></a>    <span class="at">Cen3MomP2wMI_byAmt=</span><span class="fu">as.double</span>(Cen3MomP2wMI_byAmt),</span>
+<span id="cb4-51"><a href="intro.html#cb4-51" tabindex="-1"></a>    <span class="at">Cen3MomP3wMI_byAmt=</span><span class="fu">as.double</span>(Cen3MomP3wMI_byAmt),</span>
+<span id="cb4-52"><a href="intro.html#cb4-52" tabindex="-1"></a>    <span class="at">Cen2MomP2wMI_byPol=</span><span class="fu">as.double</span>(Cen2MomP2wMI_byPol),</span>
+<span id="cb4-53"><a href="intro.html#cb4-53" tabindex="-1"></a>    <span class="at">Cen3MomP3wMI_byPol=</span><span class="fu">as.double</span>(Cen3MomP3wMI_byPol),</span>
+<span id="cb4-54"><a href="intro.html#cb4-54" tabindex="-1"></a>    <span class="at">Cen2MomP1_byAmt=</span><span class="fu">as.double</span>(Cen2MomP1_byAmt),</span>
+<span id="cb4-55"><a href="intro.html#cb4-55" tabindex="-1"></a>    <span class="at">Cen2MomP2_byAmt=</span><span class="fu">as.double</span>(Cen2MomP2_byAmt),</span>
+<span id="cb4-56"><a href="intro.html#cb4-56" tabindex="-1"></a>    <span class="at">Cen3MomP1_byAmt=</span><span class="fu">as.double</span>(Cen3MomP1_byAmt),</span>
+<span id="cb4-57"><a href="intro.html#cb4-57" tabindex="-1"></a>    <span class="at">Cen3MomP2_byAmt=</span><span class="fu">as.double</span>(Cen3MomP2_byAmt),</span>
+<span id="cb4-58"><a href="intro.html#cb4-58" tabindex="-1"></a>    <span class="at">Cen3MomP3_byAmt=</span><span class="fu">as.double</span>(Cen3MomP3_byAmt),</span>
+<span id="cb4-59"><a href="intro.html#cb4-59" tabindex="-1"></a>    <span class="at">Cen2MomP2_byPol=</span><span class="fu">as.double</span>(Cen2MomP2_byPol),</span>
+<span id="cb4-60"><a href="intro.html#cb4-60" tabindex="-1"></a>    <span class="at">Cen3MomP3_byPol=</span><span class="fu">as.double</span>(Cen3MomP3_byPol))</span></code></pre></div>
+<pre><code>## Warning: `mutate_each()` was deprecated in dplyr 0.7.0.
+## ℹ Please use `across()` instead.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+## generated.</code></pre>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="intro.html#cb6-1" tabindex="-1"></a><span class="co"># verify that we&#39;ve fixed the error</span></span>
+<span id="cb6-2"><a href="intro.html#cb6-2" tabindex="-1"></a>tbl_ilec_data_converted <span class="sc">%&gt;%</span></span>
+<span id="cb6-3"><a href="intro.html#cb6-3" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb6-4"><a href="intro.html#cb6-4" tabindex="-1"></a>    <span class="at">Cen3MomP3wMI_byPol =</span> <span class="fu">sum</span>(Cen3MomP3wMI_byPol)</span>
+<span id="cb6-5"><a href="intro.html#cb6-5" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>## # Source:   SQL [1 x 1]
+## # Database: DuckDB v0.10.0 [unknown@Linux 6.5.0-26-generic:R 4.3.2/:memory:]
+##   Cen3MomP3wMI_byPol
+##                &lt;dbl&gt;
+## 1             58823.</code></pre>
+<p>With all that data scrubbing work behind us, let’s write the data to a parquet
+so we don’t have to copy-paste the above code to work with the CSV in later R
+files. Let’s remove the first column (<code>column00</code>) since it’s just a row index.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="intro.html#cb8-1" tabindex="-1"></a>PARQUET_FILE_PATH <span class="ot">&lt;-</span> <span class="st">&quot;/mnt/data/ilec/ilec_2009_19_20210528.parquet&quot;</span></span>
+<span id="cb8-2"><a href="intro.html#cb8-2" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="intro.html#cb8-3" tabindex="-1"></a>parquet_conversion_sql <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(</span>
+<span id="cb8-4"><a href="intro.html#cb8-4" tabindex="-1"></a>  <span class="st">&quot;COPY (%s) TO &#39;%s&#39; (FORMAT &#39;parquet&#39;)&quot;</span>,</span>
+<span id="cb8-5"><a href="intro.html#cb8-5" tabindex="-1"></a>  dbplyr<span class="sc">::</span><span class="fu">sql_render</span>(tbl_ilec_data_converted <span class="sc">%&gt;%</span> </span>
+<span id="cb8-6"><a href="intro.html#cb8-6" tabindex="-1"></a>                       <span class="fu">select</span>(<span class="sc">-</span>column00)),</span>
+<span id="cb8-7"><a href="intro.html#cb8-7" tabindex="-1"></a>  PARQUET_FILE_PATH)</span>
+<span id="cb8-8"><a href="intro.html#cb8-8" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="intro.html#cb8-9" tabindex="-1"></a><span class="co"># there are huge numbers somewhere in this file, so we&#39;ll have to manually</span></span>
+<span id="cb8-10"><a href="intro.html#cb8-10" tabindex="-1"></a><span class="co"># tell DuckDB to use a floating-point (rather than decimal) storage</span></span>
+<span id="cb8-11"><a href="intro.html#cb8-11" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="intro.html#cb8-12" tabindex="-1"></a>parquet_conversion_sql <span class="ot">&lt;-</span> <span class="fu">str_replace_all</span>(parquet_conversion_sql, </span>
+<span id="cb8-13"><a href="intro.html#cb8-13" tabindex="-1"></a>                                          <span class="st">&quot;AS NUMERIC&quot;</span>, <span class="st">&quot;AS DOUBLE&quot;</span>)</span>
+<span id="cb8-14"><a href="intro.html#cb8-14" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="intro.html#cb8-15" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbExecute</span>(duckdb_conn, parquet_conversion_sql)</span></code></pre></div>
+<pre><code>## [1] 42369416</code></pre>
+<p>With the data clean and ready to go, we can move on to subsetting it for the
+model in the next chapter.</p>
 
 </div>
 </div>

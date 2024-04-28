@@ -1,0 +1,293 @@
+# ILEC Data & DuckDB {#intro}
+
+## Overview
+
+This chapter introduces the [ILEC data](https://www.soa.org/resources/research-reports/2021/2017-mortality-experience/), which
+is an excellent mortality experience dataset provided by the SOA.  Since this dataset
+is fairly large, we'll use [DuckDB](https://duckdb.org/docs/api/r).
+
+Download and unzip the [CSV file](https://cdn-files.soa.org/research/ilec/ilec-2009-18-20210528.zip) on your computer to follow along with this and subsequent chapters. 
+
+## Technical Tools: DuckDB
+
+Working with large datasets in R can be frustrating. If you encounter frequent
+crashes, or painfully slow filtering operations, you've outgrown the built-in 
+dataframe functionality.  This is where DuckDB comes in, it allows you to use
+the familiar tidyverse coding style, while offloading the actual data processing
+to a library that can handle hundreds of gigabytes. Under the hood it uses 
+[columnar storage](https://en.wikipedia.org/wiki/Column-oriented_DBMS), making 
+it incredibly fast.
+
+Let's load and summarise the ILEC data using DuckDB.  
+
+```{r message=F}
+
+# install DuckDB into your R environment
+if (!require("duckdb")) {
+  install.packages("duckdb")
+  library(duckdb)
+}
+
+if (!require("tidyverse")) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+
+if (!require("knitr")) {
+  install.packages("knitr")
+  library(knitr)
+}
+
+# remove any existing connections, if they exist
+if (exists("duckdb_conn")) {
+  duckdb::duckdb_shutdown(duckdb_conn@driver)
+  duckdb::dbDisconnect(duckdb_conn)
+  rm(duckdb_conn)
+}
+
+# create a connection for duckdb
+duckdb_conn <- duckdb::dbConnect(duckdb::duckdb(), ":memory:");
+
+# set this to match your system's available memory
+suppressMessages({
+  ignore_result <- DBI::dbExecute(duckdb_conn, "SET memory_limit = '4GB'")
+})
+
+# create an R object (that behaves like an ordinary dataframe)
+# that allows us to work with the large ILEC CSV file.
+# change the "ILEC_CSV_FILEPATH" variable to match the location of
+# the file on your computer
+ILEC_CSV_FILEPATH <- "/mnt/data/ilec/ILEC 2009-18 20210528.csv"
+
+tbl_ilec_data <- tbl(duckdb_conn,
+                     sprintf("read_csv_auto('%s')", ILEC_CSV_FILEPATH))
+
+# print an exposures and death summary, note that the code is
+# exactly the same as the standard tidyverse syntax, except for
+# the call to collect(), which is explained later.
+tbl_ilec_data %>%
+  group_by(Observation_Year) %>%
+  summarise(
+    `Total Exposures` = sum(Policies_Exposed, na.rm=T),
+    `Total Deaths` = sum(Number_Of_Deaths, na.rm=T)
+  ) %>%
+  collect() %>%
+  kable(caption = "ILEC 2017 Data Summary")
+
+```
+
+On my fairly modest computer, summarizing the entire ILEC CSV took less than 10 seconds. Let's get a
+better look at the ILEC data by looking at the first 10 rows.
+
+<div style="overflow:scroll;">
+```{r echo=F}
+head(tbl_ilec_data) %>%
+  collect() %>%
+  knitr::kable() %>%
+  kableExtra::kable_styling()
+```
+</div>
+
+The best part about DuckDB is the syntax is exactly the same as the dplyr (tidyverse),
+so there is a wealth of information and examples of usage. The only difference, is 
+the final call to `collect()`.  This moves the data from DuckDB land into a standard
+R dataframe, which is often necessary for fitting models or working with other R libraries.
+It's important that you only call `collect()` after filtering or summarizing the data 
+down to the point that it will fit into your computer's memory without crashing.
+
+You can try the above example for yourself in [Google Colab](https://colab.research.google.com/drive/1BtoaFgwZD78PHfLvL9Q6uRXcs48vVNZs?usp=sharing).
+The link will take you to to a notebook that contains the above code example. This notebook
+is **much** slower than other examples in this guide, since it must download a large data file
+and install a library from source code (DuckDB). It would probably be best to run this on
+your local computer.
+
+## Intuition: Experience Study Data and the Poisson Distribution
+
+There are three very important columns in an experience study: exposures, deaths, and 
+the expected basis. Let's translate this into the language of statistics, with some
+important details about the Poisson distribution.
+
+The Poisson distribution expects **counts**, so the actual number of deaths must be a positive integer, including zero.
+However, this requirement does not apply to the expected deaths, it can have a decimal point, but it must be positive.
+Practically, it should never be zero, nor should the exposure.
+
+Another name for expected deaths is the *mean* of the Poisson distribution, which
+is commonly referred to as $\lambda$ (lambda).  The expected mortality rate is
+called $q_x$.
+
+$$
+\lambda = \text{Expected Deaths} = \text{Exposure} \times q_x
+$$
+
+The actual deaths is sometimes called the *observed* number of deaths, and is denoted with $y$.
+
+$$
+y = \text{Actual Deaths}
+$$
+
+There is an idiosyncratic practice to be aware of with exposure. In the event of death, actuaries typically
+extend the exposure of the record to be one full year.  For example, if someone dies in July, this observation
+will be treated as one full year rather than just 6 months with one death.  The thinking here is that we are
+interested in an annual rate with an upper bound of 1, and if a person died mid-year,
+the estimated rate would be over 1 ($\frac{1 \text{ death}}{0.5 \text{ years}} = 2 \text{ deaths / yr}$).  
+This is a bit reductive, since in practice, we have enough data that a single death isn't to push our mortality rates 
+over 1, especially when a GLM is involved. This adjustment has minimal effects on the resulting rates, 
+so it's best to keep with the longstanding practice, and artificially upwardly 
+adjust the exposure of any policy that died to be 1. 
+
+For example, if a person died in the second year of the policy mid-year, we'd
+make the below adjustment
+
+| Policy # | Observation Year | Number of Exposures | Number of Deaths |
+|----------|------------------|---------------------|------------------|
+|  1       | 2015             |   1                 |      0           |
+|  1       | 2016             |   0.5 $\implies$ 1  |      1           |
+
+
+## Technical Tools: Parquet files
+
+Although we are now reading our CSV file using DuckDB, which is much faster
+than the built in `read.csv` or `read_csv`, it would be wise to store the rather
+large CSV file in something more efficient.  Parquet (pronounced "par-kay")
+files are widely used in data science and big data processing for 
+exactly this purpose. There are a few reasons to do this:
+
+1. **size**: parquet files use efficient storage and compression. The largest
+bottleneck in processing data is usually reading data from the network or physical storage.
+
+2. **scale**: you can fragment a single CSV file into multiple parquet files. This is especially
+important once your file sizes reach hundreds of gigabytes. This allows parallel processing 
+(one computer using all it's cpus) or distributed processing (multiple computers running in a cluster).
+
+3. **portability**: Although CSVs are themselves very portable, implementations of CSV processors
+are not.  For example, there is a special CSV format called "Excel CSV" that is made specifically
+to appease Excel's CSV processor. R's CSV processor has its own quirks. Parquet files store
+*column type* information in the file, so you can be sure that if another program or library
+is reading the parquet file, it will not attempt a conversion that corrupts the data.
+
+Let's illustrate the point about CSV files with an example.  There is a column that
+is largely numeric, which most CSV processors will attempt to process as numeric, that
+contains some rare non-numeric values.  This causes the below error:
+
+```{r warning=F, error=TRUE}
+
+# this will cause an error
+tbl_ilec_data %>%
+  summarise(
+    Cen3MomP3wMI_byPol = sum(Cen3MomP3wMI_byPol)
+  )
+
+```
+
+
+We're going to have to do some tedious data scrubbing to get everything into the
+right type. Wouldn't it be nice if it was already in a parquet, so this wouldn't be a problem?
+Here is the rough order of operations:
+
+1. Create a new link to the CSV, but this time, treat everything as characters. 
+
+2. Replace the "NA" values with NULL in all columns
+
+3. Convert the string columns to the correct type (painfully and manually).
+
+```{r}
+
+tbl_ilec_data_strs <- tbl(duckdb_conn,
+                     sprintf("read_csv('%s', all_varchar=T)", ILEC_CSV_FILEPATH))
+
+
+tbl_ilec_data_converted <- tbl_ilec_data_strs %>%
+  # replace strings that say "NA" with NULL, denoting a missing / invalid value
+  mutate_each(~ case_when(
+    . %in% c("NA", "N/A (Not Term)", "Unknown") ~ NULL,
+    TRUE ~ .
+  )) %>%
+  # convert the numeric columns to be the right type of number
+  mutate(
+    column00=as.integer(column00),
+    Observation_Year=as.integer(Observation_Year),
+    Preferred_Indicator=trimws(Preferred_Indicator),
+    Gender=trimws(Gender),
+    Smoker_Status=trimws(Smoker_Status),
+    Insurance_Plan=trimws(Insurance_Plan),
+    Issue_Age=as.integer(Issue_Age),
+    Duration=as.integer(Duration),
+    Attained_Age=as.integer(Attained_Age),
+    Age_Basis=trimws(Age_Basis),
+    Face_Amount_Band=trimws(Face_Amount_Band),
+    Issue_Year=as.integer(Issue_Year),
+    Number_Of_Preferred_Classes=coalesce(as.integer(Number_Of_Preferred_Classes), 0),
+    Preferred_Class=trimws(Preferred_Class),
+    SOA_Anticipated_Level_Term_Period=trimws(SOA_Anticipated_Level_Term_Period),
+    SOA_Guaranteed_Level_Term_Period=trimws(SOA_Guaranteed_Level_Term_Period),
+    SOA_Post_level_Term_Indicator=trimws(SOA_Post_level_Term_Indicator),
+    Select_Ultimate_Indicator=trimws(Select_Ultimate_Indicator),
+    Number_Of_Deaths=as.double(Number_Of_Deaths),
+    Death_Claim_Amount=as.double(Death_Claim_Amount),
+    Policies_Exposed=as.double(Policies_Exposed),
+    Amount_Exposed=as.double(Amount_Exposed),
+    Expected_Death_QX7580E_by_Amount=as.double(Expected_Death_QX7580E_by_Amount),
+    Expected_Death_QX2001VBT_by_Amount=as.double(Expected_Death_QX2001VBT_by_Amount),
+    Expected_Death_QX2008VBT_by_Amount=as.double(Expected_Death_QX2008VBT_by_Amount),
+    Expected_Death_QX2008VBTLU_by_Amount=as.double(Expected_Death_QX2008VBTLU_by_Amount),
+    Expected_Death_QX2015VBT_by_Amount=as.double(Expected_Death_QX2015VBT_by_Amount),
+    Expected_Death_QX7580E_by_Policy=as.double(Expected_Death_QX7580E_by_Policy),
+    Expected_Death_QX2001VBT_by_Policy=as.double(Expected_Death_QX2001VBT_by_Policy),
+    Expected_Death_QX2008VBT_by_Policy=as.double(Expected_Death_QX2008VBT_by_Policy),
+    Expected_Death_QX2008VBTLU_by_Policy=as.double(Expected_Death_QX2008VBTLU_by_Policy),
+    Expected_Death_QX2015VBT_by_Policy=as.double(Expected_Death_QX2015VBT_by_Policy),
+    ExpDeathQx2015VBTwMI_byPol=as.double(ExpDeathQx2015VBTwMI_byPol),
+    ExpDeathQx2015VBTwMI_byAmt=as.double(ExpDeathQx2015VBTwMI_byAmt),
+    Cen2MomP1wMI_byAmt=as.double(Cen2MomP1wMI_byAmt),
+    Cen2MomP2wMI_byAmt=as.double(Cen2MomP2wMI_byAmt),
+    Cen3MomP1wMI_byAmt=as.double(Cen3MomP1wMI_byAmt),
+    Cen3MomP2wMI_byAmt=as.double(Cen3MomP2wMI_byAmt),
+    Cen3MomP3wMI_byAmt=as.double(Cen3MomP3wMI_byAmt),
+    Cen2MomP2wMI_byPol=as.double(Cen2MomP2wMI_byPol),
+    Cen3MomP3wMI_byPol=as.double(Cen3MomP3wMI_byPol),
+    Cen2MomP1_byAmt=as.double(Cen2MomP1_byAmt),
+    Cen2MomP2_byAmt=as.double(Cen2MomP2_byAmt),
+    Cen3MomP1_byAmt=as.double(Cen3MomP1_byAmt),
+    Cen3MomP2_byAmt=as.double(Cen3MomP2_byAmt),
+    Cen3MomP3_byAmt=as.double(Cen3MomP3_byAmt),
+    Cen2MomP2_byPol=as.double(Cen2MomP2_byPol),
+    Cen3MomP3_byPol=as.double(Cen3MomP3_byPol))
+
+# verify that we've fixed the error
+tbl_ilec_data_converted %>%
+  summarise(
+    Cen3MomP3wMI_byPol = sum(Cen3MomP3wMI_byPol)
+  )
+
+
+```
+
+With all that data scrubbing work behind us, let's write the data to a parquet
+so we don't have to copy-paste the above code to work with the CSV in later R
+files.  Let's remove the first column (`column00`) since it's just a row index.
+
+```{r}
+
+PARQUET_FILE_PATH <- "/mnt/data/ilec/ilec_2009_19_20210528.parquet"
+
+parquet_conversion_sql <- sprintf(
+  "COPY (%s) TO '%s' (FORMAT 'parquet')",
+  dbplyr::sql_render(tbl_ilec_data_converted %>% 
+                       select(-column00)),
+  PARQUET_FILE_PATH)
+
+# there are huge numbers somewhere in this file, so we'll have to manually
+# tell DuckDB to use a floating-point (rather than decimal) storage
+
+parquet_conversion_sql <- str_replace_all(parquet_conversion_sql, 
+                                          "AS NUMERIC", "AS DOUBLE")
+
+DBI::dbExecute(duckdb_conn, parquet_conversion_sql)
+
+```
+
+With the data clean and ready to go, we can move on to subsetting it for the
+model in the next chapter.
+
+
+

@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Chapter 3 Data Analysis &amp; Inferential Modeling | Adventures in Low Credibility</title>
+  <meta name="description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  <meta name="generator" content="bookdown 0.39 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Chapter 3 Data Analysis &amp; Inferential Modeling | Adventures in Low Credibility" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  <meta name="github-repo" content="rstudio/bookdown-demo" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Chapter 3 Data Analysis &amp; Inferential Modeling | Adventures in Low Credibility" />
+  
+  <meta name="twitter:description" content="This is a minimal example of using the bookdown package to write a book. The output format for this example is bookdown::gitbook." />
+  
+
+<meta name="author" content="Mike McPhee Anderson, FSA" />
+
+
+<meta name="date" content="2024-04-28" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="intro.html"/>
+<link rel="next" href="methods.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+<script src="libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
+<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">Adventures in Low Credibility</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="1" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="index.html"><a href="index.html#overview"><i class="fa fa-check"></i><b>1.1</b> Overview</a></li>
+<li class="chapter" data-level="1.2" data-path="index.html"><a href="index.html#technical-tools"><i class="fa fa-check"></i><b>1.2</b> Technical Tools</a></li>
+<li class="chapter" data-level="1.3" data-path="index.html"><a href="index.html#intuition-poisson-distribution"><i class="fa fa-check"></i><b>1.3</b> Intuition: Poisson Distribution</a></li>
+<li class="chapter" data-level="1.4" data-path="index.html"><a href="index.html#code-examples"><i class="fa fa-check"></i><b>1.4</b> Code examples</a>
+<ul>
+<li class="chapter" data-level="1.4.1" data-path="index.html"><a href="index.html#r-code"><i class="fa fa-check"></i><b>1.4.1</b> R code</a></li>
+<li class="chapter" data-level="1.4.2" data-path="index.html"><a href="index.html#google-colab"><i class="fa fa-check"></i><b>1.4.2</b> Google Colab</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="index.html"><a href="index.html#intro"><i class="fa fa-check"></i><b>2</b> ILEC Data</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>2.1</b> Overview</a></li>
+<li class="chapter" data-level="2.2" data-path="intro.html"><a href="intro.html#technical-tools-duckdb"><i class="fa fa-check"></i><b>2.2</b> Technical Tools: DuckDB</a></li>
+<li class="chapter" data-level="2.3" data-path="intro.html"><a href="intro.html#intuition-experience-study-data-and-the-poisson-distribution"><i class="fa fa-check"></i><b>2.3</b> Intuition: Experience Study Data and the Poisson Distribution</a></li>
+<li class="chapter" data-level="2.4" data-path="intro.html"><a href="intro.html#technical-tools-parquet-files"><i class="fa fa-check"></i><b>2.4</b> Technical Tools: Parquet files</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html"><i class="fa fa-check"></i><b>3</b> Data Analysis &amp; Inferential Modeling</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#overview-2"><i class="fa fa-check"></i><b>3.1</b> Overview</a></li>
+<li class="chapter" data-level="3.2" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#technical-tools-working-with-duckdb"><i class="fa fa-check"></i><b>3.2</b> Technical Tools: Working with DuckDB</a></li>
+<li class="chapter" data-level="3.3" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#intuition-why-inferential-models"><i class="fa fa-check"></i><b>3.3</b> Intuition: Why inferential models?</a>
+<ul>
+<li class="chapter" data-level="3.3.1" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#correlations"><i class="fa fa-check"></i><b>3.3.1</b> Correlations</a></li>
+<li class="chapter" data-level="3.3.2" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#inferential-models"><i class="fa fa-check"></i><b>3.3.2</b> Inferential models</a></li>
+</ul></li>
+<li class="chapter" data-level="3.4" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#technical-tools-decision-trees"><i class="fa fa-check"></i><b>3.4</b> Technical Tools: Decision Trees</a>
+<ul>
+<li class="chapter" data-level="3.4.1" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#actual-to-expected-plot"><i class="fa fa-check"></i><b>3.4.1</b> Actual-to-Expected Plot</a></li>
+<li class="chapter" data-level="3.4.2" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#decision-tree"><i class="fa fa-check"></i><b>3.4.2</b> Decision Tree</a></li>
+</ul></li>
+<li class="chapter" data-level="3.5" data-path="data-analysis-inferential-modeling.html"><a href="data-analysis-inferential-modeling.html#intuition-what-is-rpart-doing"><i class="fa fa-check"></i><b>3.5</b> Intuition: What is rpart doing?</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="methods.html"><a href="methods.html"><i class="fa fa-check"></i><b>4</b> Methods</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="methods.html"><a href="methods.html#math-example"><i class="fa fa-check"></i><b>4.1</b> math example</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="applications.html"><a href="applications.html"><i class="fa fa-check"></i><b>5</b> Applications</a>
+<ul>
+<li class="chapter" data-level="5.1" data-path="applications.html"><a href="applications.html#example-one"><i class="fa fa-check"></i><b>5.1</b> Example one</a></li>
+<li class="chapter" data-level="5.2" data-path="applications.html"><a href="applications.html#example-two"><i class="fa fa-check"></i><b>5.2</b> Example two</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="final-words.html"><a href="final-words.html"><i class="fa fa-check"></i><b>6</b> Final Words</a></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Adventures in Low Credibility</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="data-analysis-inferential-modeling" class="section level1 hasAnchor" number="3">
+<h1><span class="header-section-number">Chapter 3</span> Data Analysis &amp; Inferential Modeling<a href="data-analysis-inferential-modeling.html#data-analysis-inferential-modeling" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<div id="overview-2" class="section level2 hasAnchor" number="3.1">
+<h2><span class="header-section-number">3.1</span> Overview<a href="data-analysis-inferential-modeling.html#overview-2" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>In this section, the focus is on preparing data for modeling. First, we’ll
+extract subsets from the ILEC parquet file. Next, we’ll build some models to
+aid our data analysis. This technique is called <em>inferential modeling</em>.</p>
+</div>
+<div id="technical-tools-working-with-duckdb" class="section level2 hasAnchor" number="3.2">
+<h2><span class="header-section-number">3.2</span> Technical Tools: Working with DuckDB<a href="data-analysis-inferential-modeling.html#technical-tools-working-with-duckdb" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="data-analysis-inferential-modeling.html#cb1-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;duckdb&quot;</span>)) {</span>
+<span id="cb1-2"><a href="data-analysis-inferential-modeling.html#cb1-2" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;duckdb&quot;</span>)</span>
+<span id="cb1-3"><a href="data-analysis-inferential-modeling.html#cb1-3" tabindex="-1"></a>  <span class="fu">library</span>(duckdb)</span>
+<span id="cb1-4"><a href="data-analysis-inferential-modeling.html#cb1-4" tabindex="-1"></a>}</span>
+<span id="cb1-5"><a href="data-analysis-inferential-modeling.html#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="data-analysis-inferential-modeling.html#cb1-6" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;tidyverse&quot;</span>)) {</span>
+<span id="cb1-7"><a href="data-analysis-inferential-modeling.html#cb1-7" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;tidyverse&quot;</span>)</span>
+<span id="cb1-8"><a href="data-analysis-inferential-modeling.html#cb1-8" tabindex="-1"></a>  <span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-9"><a href="data-analysis-inferential-modeling.html#cb1-9" tabindex="-1"></a>}</span>
+<span id="cb1-10"><a href="data-analysis-inferential-modeling.html#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="data-analysis-inferential-modeling.html#cb1-11" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;knitr&quot;</span>)) {</span>
+<span id="cb1-12"><a href="data-analysis-inferential-modeling.html#cb1-12" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;knitr&quot;</span>)</span>
+<span id="cb1-13"><a href="data-analysis-inferential-modeling.html#cb1-13" tabindex="-1"></a>  <span class="fu">library</span>(knitr)</span>
+<span id="cb1-14"><a href="data-analysis-inferential-modeling.html#cb1-14" tabindex="-1"></a>}</span>
+<span id="cb1-15"><a href="data-analysis-inferential-modeling.html#cb1-15" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="data-analysis-inferential-modeling.html#cb1-16" tabindex="-1"></a><span class="co"># remove any existing connections, if they exist</span></span>
+<span id="cb1-17"><a href="data-analysis-inferential-modeling.html#cb1-17" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">exists</span>(<span class="st">&quot;duckdb_conn&quot;</span>)) {</span>
+<span id="cb1-18"><a href="data-analysis-inferential-modeling.html#cb1-18" tabindex="-1"></a>  duckdb<span class="sc">::</span><span class="fu">duckdb_shutdown</span>(duckdb_conn<span class="sc">@</span>driver)</span>
+<span id="cb1-19"><a href="data-analysis-inferential-modeling.html#cb1-19" tabindex="-1"></a>  duckdb<span class="sc">::</span><span class="fu">dbDisconnect</span>(duckdb_conn)</span>
+<span id="cb1-20"><a href="data-analysis-inferential-modeling.html#cb1-20" tabindex="-1"></a>  <span class="fu">rm</span>(duckdb_conn)</span>
+<span id="cb1-21"><a href="data-analysis-inferential-modeling.html#cb1-21" tabindex="-1"></a>}</span>
+<span id="cb1-22"><a href="data-analysis-inferential-modeling.html#cb1-22" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="data-analysis-inferential-modeling.html#cb1-23" tabindex="-1"></a><span class="co"># create a connection for duckdb</span></span>
+<span id="cb1-24"><a href="data-analysis-inferential-modeling.html#cb1-24" tabindex="-1"></a>duckdb_conn <span class="ot">&lt;-</span> duckdb<span class="sc">::</span><span class="fu">dbConnect</span>(duckdb<span class="sc">::</span><span class="fu">duckdb</span>(), <span class="st">&quot;:memory:&quot;</span>);</span>
+<span id="cb1-25"><a href="data-analysis-inferential-modeling.html#cb1-25" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="data-analysis-inferential-modeling.html#cb1-26" tabindex="-1"></a><span class="co"># set this to match your system&#39;s available memory</span></span>
+<span id="cb1-27"><a href="data-analysis-inferential-modeling.html#cb1-27" tabindex="-1"></a><span class="fu">suppressMessages</span>({</span>
+<span id="cb1-28"><a href="data-analysis-inferential-modeling.html#cb1-28" tabindex="-1"></a>  ignore_result <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbExecute</span>(duckdb_conn, <span class="st">&quot;SET memory_limit = &#39;4GB&#39;&quot;</span>)</span>
+<span id="cb1-29"><a href="data-analysis-inferential-modeling.html#cb1-29" tabindex="-1"></a>})</span>
+<span id="cb1-30"><a href="data-analysis-inferential-modeling.html#cb1-30" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="data-analysis-inferential-modeling.html#cb1-31" tabindex="-1"></a><span class="co"># point this to the parquet file built in the last chapter </span></span>
+<span id="cb1-32"><a href="data-analysis-inferential-modeling.html#cb1-32" tabindex="-1"></a>ILEC_PQ_FILEPATH <span class="ot">&lt;-</span> <span class="st">&quot;/mnt/data/ilec/ilec_2009_19_20210528.parquet&quot;</span></span>
+<span id="cb1-33"><a href="data-analysis-inferential-modeling.html#cb1-33" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="data-analysis-inferential-modeling.html#cb1-34" tabindex="-1"></a>tbl_ilec_data <span class="ot">&lt;-</span> <span class="fu">tbl</span>(duckdb_conn,</span>
+<span id="cb1-35"><a href="data-analysis-inferential-modeling.html#cb1-35" tabindex="-1"></a>                     <span class="fu">sprintf</span>(<span class="st">&quot;read_parquet(&#39;%s&#39;)&quot;</span>, ILEC_PQ_FILEPATH))</span>
+<span id="cb1-36"><a href="data-analysis-inferential-modeling.html#cb1-36" tabindex="-1"></a></span>
+<span id="cb1-37"><a href="data-analysis-inferential-modeling.html#cb1-37" tabindex="-1"></a><span class="co"># print an exposures and death summary, note that the code is</span></span>
+<span id="cb1-38"><a href="data-analysis-inferential-modeling.html#cb1-38" tabindex="-1"></a><span class="co"># exactly the same as the standard tidyverse syntax, except for</span></span>
+<span id="cb1-39"><a href="data-analysis-inferential-modeling.html#cb1-39" tabindex="-1"></a><span class="co"># the call to collect(), which is explained later.</span></span>
+<span id="cb1-40"><a href="data-analysis-inferential-modeling.html#cb1-40" tabindex="-1"></a>tbl_ilec_data <span class="sc">%&gt;%</span></span>
+<span id="cb1-41"><a href="data-analysis-inferential-modeling.html#cb1-41" tabindex="-1"></a>  <span class="fu">group_by</span>(Observation_Year) <span class="sc">%&gt;%</span></span>
+<span id="cb1-42"><a href="data-analysis-inferential-modeling.html#cb1-42" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb1-43"><a href="data-analysis-inferential-modeling.html#cb1-43" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Exposures</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Policies_Exposed, <span class="at">na.rm=</span>T),</span>
+<span id="cb1-44"><a href="data-analysis-inferential-modeling.html#cb1-44" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Number_Of_Deaths, <span class="at">na.rm=</span>T)</span>
+<span id="cb1-45"><a href="data-analysis-inferential-modeling.html#cb1-45" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb1-46"><a href="data-analysis-inferential-modeling.html#cb1-46" tabindex="-1"></a>  <span class="fu">collect</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb1-47"><a href="data-analysis-inferential-modeling.html#cb1-47" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;ILEC 2017 Data Summary&quot;</span>)</span></code></pre></div>
+<table>
+<caption><span id="tab:unnamed-chunk-1">Table 3.1: </span>ILEC 2017 Data Summary</caption>
+<thead>
+<tr class="header">
+<th align="right">Observation_Year</th>
+<th align="right">Total Exposures</th>
+<th align="right">Total Deaths</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">2009</td>
+<td align="right">31322347</td>
+<td align="right">249865</td>
+</tr>
+<tr class="even">
+<td align="right">2010</td>
+<td align="right">40190513</td>
+<td align="right">412029</td>
+</tr>
+<tr class="odd">
+<td align="right">2011</td>
+<td align="right">57118520</td>
+<td align="right">563694</td>
+</tr>
+<tr class="even">
+<td align="right">2012</td>
+<td align="right">51036427</td>
+<td align="right">537286</td>
+</tr>
+<tr class="odd">
+<td align="right">2013</td>
+<td align="right">57373029</td>
+<td align="right">554199</td>
+</tr>
+<tr class="even">
+<td align="right">2014</td>
+<td align="right">57552165</td>
+<td align="right">560393</td>
+</tr>
+<tr class="odd">
+<td align="right">2015</td>
+<td align="right">57907852</td>
+<td align="right">565853</td>
+</tr>
+<tr class="even">
+<td align="right">2016</td>
+<td align="right">57921762</td>
+<td align="right">552127</td>
+</tr>
+<tr class="odd">
+<td align="right">2017</td>
+<td align="right">57346148</td>
+<td align="right">558579</td>
+</tr>
+<tr class="even">
+<td align="right">2018</td>
+<td align="right">26188701</td>
+<td align="right">360381</td>
+</tr>
+</tbody>
+</table>
+<p>We’ll prepare two modeling data frames, based on the product type and the
+number of underwriting classes. Let’s tabulate the exposures by the number of
+preferred underwriting classes and insurance plan (product type). These are important
+considerations for the following reasons:</p>
+<ul>
+<li><p><strong>Number of Preferred Classes:</strong> Insurers want to match the mortality risk of
+policyholders with the amount that the product costs. This is accomplished
+through underwriting, where assessments of the policyholders’ health determines
+if they are eligible for a policy and also cheaper premiums by belonging to a
+<em>preferred class</em> where the mortality risk is lower than other policyholders. If
+there is a large number of preferred classes, there is likely more extensive underwriting.
+If there is no preferred classes, the insurer may still charge different rates to
+smokers.</p></li>
+<li><p><strong>Insurance Plan:</strong> People buy life insurance for different reasons. Some products
+have a <em>savings component</em>, where the policyholder might rationally choose to
+end their coverage in exchange for payment from the insurer based on the policy’s
+<em>cash value</em>. Generally, <em>Perm</em> products fall into this category. There is a
+special type of product called <em>ULSG</em>, where the cash value is much smaller,
+resulting in fewer policyholders ending their coverage each year.<br />
+These products have different mortality characteristics due to differences
+in the target market and policyholder behavior, so we should develop distinct
+mortality rates.</p></li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="data-analysis-inferential-modeling.html#cb2-1" tabindex="-1"></a>tbl_ilec_data <span class="sc">%&gt;%</span></span>
+<span id="cb2-2"><a href="data-analysis-inferential-modeling.html#cb2-2" tabindex="-1"></a>  <span class="fu">group_by</span>(Insurance_Plan, Number_Of_Preferred_Classes, Smoker_Status) <span class="sc">%&gt;%</span></span>
+<span id="cb2-3"><a href="data-analysis-inferential-modeling.html#cb2-3" tabindex="-1"></a>  <span class="fu">filter</span>(Insurance_Plan <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;ULSG&quot;</span>, <span class="st">&quot;Perm&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb2-4"><a href="data-analysis-inferential-modeling.html#cb2-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb2-5"><a href="data-analysis-inferential-modeling.html#cb2-5" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Exposure</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Policies_Exposed),</span>
+<span id="cb2-6"><a href="data-analysis-inferential-modeling.html#cb2-6" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Number_Of_Deaths)</span>
+<span id="cb2-7"><a href="data-analysis-inferential-modeling.html#cb2-7" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-8"><a href="data-analysis-inferential-modeling.html#cb2-8" tabindex="-1"></a>  <span class="fu">arrange</span>(</span>
+<span id="cb2-9"><a href="data-analysis-inferential-modeling.html#cb2-9" tabindex="-1"></a>    Insurance_Plan,</span>
+<span id="cb2-10"><a href="data-analysis-inferential-modeling.html#cb2-10" tabindex="-1"></a>    Number_Of_Preferred_Classes,</span>
+<span id="cb2-11"><a href="data-analysis-inferential-modeling.html#cb2-11" tabindex="-1"></a>    Smoker_Status</span>
+<span id="cb2-12"><a href="data-analysis-inferential-modeling.html#cb2-12" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-13"><a href="data-analysis-inferential-modeling.html#cb2-13" tabindex="-1"></a>  <span class="fu">collect</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb2-14"><a href="data-analysis-inferential-modeling.html#cb2-14" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;Perm &amp; ULSG Credibility, by UW Class&quot;</span>,</span>
+<span id="cb2-15"><a href="data-analysis-inferential-modeling.html#cb2-15" tabindex="-1"></a>        <span class="at">align =</span> <span class="st">&quot;c&quot;</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span>), <span class="at">digits =</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-16"><a href="data-analysis-inferential-modeling.html#cb2-16" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">kable_styling</span>()</span></code></pre></div>
+<pre><code>## `summarise()` has grouped output by &quot;Insurance_Plan&quot; and
+## &quot;Number_Of_Preferred_Classes&quot;. You can override using the `.groups` argument.</code></pre>
+<pre><code>## Warning: Missing values are always removed in SQL aggregation functions.
+## Use `na.rm = TRUE` to silence this warning
+## This warning is displayed once every 8 hours.</code></pre>
+<table class="table" style="color: black; margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:unnamed-chunk-2">Table 3.2: </span><span id="tab:unnamed-chunk-2">Table 3.3: </span>Perm &amp; ULSG Credibility, by UW Class
+</caption>
+<thead>
+<tr>
+<th style="text-align:center;">
+Insurance_Plan
+</th>
+<th style="text-align:center;">
+Number_Of_Preferred_Classes
+</th>
+<th style="text-align:center;">
+Smoker_Status
+</th>
+<th style="text-align:center;">
+Total Exposure
+</th>
+<th style="text-align:center;">
+Total Deaths
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+55,329,569
+</td>
+<td style="text-align:center;">
+533,217
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Smoker
+</td>
+<td style="text-align:center;">
+12,154,544
+</td>
+<td style="text-align:center;">
+215,513
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+UNKNOWN
+</td>
+<td style="text-align:center;">
+3,378,391
+</td>
+<td style="text-align:center;">
+19,598
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+125,429,851
+</td>
+<td style="text-align:center;">
+3,060,541
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+10,043,440
+</td>
+<td style="text-align:center;">
+54,421
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+Smoker
+</td>
+<td style="text-align:center;">
+1,425,306
+</td>
+<td style="text-align:center;">
+8,149
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+6,543,448
+</td>
+<td style="text-align:center;">
+9,114
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+4
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+227,007
+</td>
+<td style="text-align:center;">
+465
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+2,797,163
+</td>
+<td style="text-align:center;">
+15,924
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Smoker
+</td>
+<td style="text-align:center;">
+707,734
+</td>
+<td style="text-align:center;">
+2,949
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+UNKNOWN
+</td>
+<td style="text-align:center;">
+10,661
+</td>
+<td style="text-align:center;">
+5
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+488,536
+</td>
+<td style="text-align:center;">
+310
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+1,418,932
+</td>
+<td style="text-align:center;">
+15,461
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+Smoker
+</td>
+<td style="text-align:center;">
+658,868
+</td>
+<td style="text-align:center;">
+4,967
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+7,505,527
+</td>
+<td style="text-align:center;">
+32,598
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+4
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+4,176,088
+</td>
+<td style="text-align:center;">
+8,840
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="data-analysis-inferential-modeling.html#cb5-1" tabindex="-1"></a><span class="co"># helper function to only extract the columns that we need for modeling</span></span>
+<span id="cb5-2"><a href="data-analysis-inferential-modeling.html#cb5-2" tabindex="-1"></a>subset_cols <span class="ot">&lt;-</span> <span class="cf">function</span>(df) {</span>
+<span id="cb5-3"><a href="data-analysis-inferential-modeling.html#cb5-3" tabindex="-1"></a>  df <span class="sc">%&gt;%</span> <span class="fu">select</span>(</span>
+<span id="cb5-4"><a href="data-analysis-inferential-modeling.html#cb5-4" tabindex="-1"></a>    Observation_Year<span class="sc">:</span>Number_Of_Preferred_Classes, </span>
+<span id="cb5-5"><a href="data-analysis-inferential-modeling.html#cb5-5" tabindex="-1"></a>    Expected_Death_QX2008VBT_by_Policy,</span>
+<span id="cb5-6"><a href="data-analysis-inferential-modeling.html#cb5-6" tabindex="-1"></a>    Number_Of_Deaths<span class="sc">:</span>Amount_Exposed)</span>
+<span id="cb5-7"><a href="data-analysis-inferential-modeling.html#cb5-7" tabindex="-1"></a>}</span>
+<span id="cb5-8"><a href="data-analysis-inferential-modeling.html#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="data-analysis-inferential-modeling.html#cb5-9" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="data-analysis-inferential-modeling.html#cb5-10" tabindex="-1"></a>df_perm <span class="ot">&lt;-</span> tbl_ilec_data <span class="sc">%&gt;%</span></span>
+<span id="cb5-11"><a href="data-analysis-inferential-modeling.html#cb5-11" tabindex="-1"></a>  <span class="fu">filter</span>(Insurance_Plan <span class="sc">==</span> <span class="st">&quot;Perm&quot;</span>, </span>
+<span id="cb5-12"><a href="data-analysis-inferential-modeling.html#cb5-12" tabindex="-1"></a>         Number_Of_Preferred_Classes <span class="sc">==</span> <span class="dv">2</span>,</span>
+<span id="cb5-13"><a href="data-analysis-inferential-modeling.html#cb5-13" tabindex="-1"></a>         Smoker_Status <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;Smoker&quot;</span>, <span class="st">&quot;NonSmoker&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb5-14"><a href="data-analysis-inferential-modeling.html#cb5-14" tabindex="-1"></a>  <span class="fu">subset_cols</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-15"><a href="data-analysis-inferential-modeling.html#cb5-15" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb5-16"><a href="data-analysis-inferential-modeling.html#cb5-16" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="data-analysis-inferential-modeling.html#cb5-17" tabindex="-1"></a>df_ulsg <span class="ot">&lt;-</span> tbl_ilec_data <span class="sc">%&gt;%</span></span>
+<span id="cb5-18"><a href="data-analysis-inferential-modeling.html#cb5-18" tabindex="-1"></a>  <span class="fu">filter</span>(Insurance_Plan <span class="sc">==</span> <span class="st">&quot;ULSG&quot;</span>,</span>
+<span id="cb5-19"><a href="data-analysis-inferential-modeling.html#cb5-19" tabindex="-1"></a>         Number_Of_Preferred_Classes <span class="sc">==</span> <span class="dv">0</span>,</span>
+<span id="cb5-20"><a href="data-analysis-inferential-modeling.html#cb5-20" tabindex="-1"></a>         Smoker_Status <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;Smoker&quot;</span>, <span class="st">&quot;NonSmoker&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb5-21"><a href="data-analysis-inferential-modeling.html#cb5-21" tabindex="-1"></a>  <span class="fu">subset_cols</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-22"><a href="data-analysis-inferential-modeling.html#cb5-22" tabindex="-1"></a>  <span class="fu">collect</span>()</span>
+<span id="cb5-23"><a href="data-analysis-inferential-modeling.html#cb5-23" tabindex="-1"></a></span>
+<span id="cb5-24"><a href="data-analysis-inferential-modeling.html#cb5-24" tabindex="-1"></a><span class="fu">bind_rows</span>(df_perm, df_ulsg) <span class="sc">%&gt;%</span></span>
+<span id="cb5-25"><a href="data-analysis-inferential-modeling.html#cb5-25" tabindex="-1"></a>  <span class="fu">group_by</span>(Insurance_Plan, Number_Of_Preferred_Classes, Smoker_Status) <span class="sc">%&gt;%</span></span>
+<span id="cb5-26"><a href="data-analysis-inferential-modeling.html#cb5-26" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb5-27"><a href="data-analysis-inferential-modeling.html#cb5-27" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Exposure</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Policies_Exposed),</span>
+<span id="cb5-28"><a href="data-analysis-inferential-modeling.html#cb5-28" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Number_Of_Deaths)</span>
+<span id="cb5-29"><a href="data-analysis-inferential-modeling.html#cb5-29" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb5-30"><a href="data-analysis-inferential-modeling.html#cb5-30" tabindex="-1"></a>  <span class="fu">arrange</span>(</span>
+<span id="cb5-31"><a href="data-analysis-inferential-modeling.html#cb5-31" tabindex="-1"></a>    Insurance_Plan,</span>
+<span id="cb5-32"><a href="data-analysis-inferential-modeling.html#cb5-32" tabindex="-1"></a>    Number_Of_Preferred_Classes,</span>
+<span id="cb5-33"><a href="data-analysis-inferential-modeling.html#cb5-33" tabindex="-1"></a>    Smoker_Status</span>
+<span id="cb5-34"><a href="data-analysis-inferential-modeling.html#cb5-34" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb5-35"><a href="data-analysis-inferential-modeling.html#cb5-35" tabindex="-1"></a>  <span class="fu">collect</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-36"><a href="data-analysis-inferential-modeling.html#cb5-36" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;Perm &amp; ULSG Credibility, Modeling Subset&quot;</span>,</span>
+<span id="cb5-37"><a href="data-analysis-inferential-modeling.html#cb5-37" tabindex="-1"></a>        <span class="at">align =</span> <span class="st">&quot;c&quot;</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span>), <span class="at">digits =</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-38"><a href="data-analysis-inferential-modeling.html#cb5-38" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">kable_styling</span>()</span></code></pre></div>
+<pre><code>## `summarise()` has grouped output by &#39;Insurance_Plan&#39;,
+## &#39;Number_Of_Preferred_Classes&#39;. You can override using the `.groups` argument.</code></pre>
+<table class="table" style="color: black; margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:unnamed-chunk-3">Table 3.4: </span><span id="tab:unnamed-chunk-3">Table 3.5: </span>Perm &amp; ULSG Credibility, Modeling Subset
+</caption>
+<thead>
+<tr>
+<th style="text-align:center;">
+Insurance_Plan
+</th>
+<th style="text-align:center;">
+Number_Of_Preferred_Classes
+</th>
+<th style="text-align:center;">
+Smoker_Status
+</th>
+<th style="text-align:center;">
+Total Exposure
+</th>
+<th style="text-align:center;">
+Total Deaths
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+10,043,440
+</td>
+<td style="text-align:center;">
+54,421
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Perm
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+Smoker
+</td>
+<td style="text-align:center;">
+1,425,306
+</td>
+<td style="text-align:center;">
+8,149
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NonSmoker
+</td>
+<td style="text-align:center;">
+2,797,163
+</td>
+<td style="text-align:center;">
+15,924
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+ULSG
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Smoker
+</td>
+<td style="text-align:center;">
+707,734
+</td>
+<td style="text-align:center;">
+2,949
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="intuition-why-inferential-models" class="section level2 hasAnchor" number="3.3">
+<h2><span class="header-section-number">3.3</span> Intuition: Why inferential models?<a href="data-analysis-inferential-modeling.html#intuition-why-inferential-models" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Inferential models are essential to understanding our data. You may be wondering,
+why not visualize the data first with plots? In my opinion, visualizations can
+be misleading due to correlations between predictors. We’ll explore these concept in detail.</p>
+<div id="correlations" class="section level3 hasAnchor" number="3.3.1">
+<h3><span class="header-section-number">3.3.1</span> Correlations<a href="data-analysis-inferential-modeling.html#correlations" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>To start with a trivial example, let’s pick two predictors that are obviously
+correlated: attained age and duration. Using the Perm dataframe we built in the
+preceding section, the correlation coefficient is 0.45.
+Although they are correlated, there are two distinct actuarial considerations here: the selection
+period wear-off, and the age-related mortality effect, defined as follows:</p>
+<ul>
+<li><p><strong>Selection Period Wear-off:</strong> When you buy individual life insurance, there
+is usually some form of underwriting. It may be as simple as a questionnaire about
+your health, or as involved as blood-tests or an exam by a physician. The insurer
+has some assurances that the insured has some level of health, but as time goes on,
+the relevance of the health assessment at duration 1 diminishes. For this reason,
+the expected mortality rate of a 55 year old 10 years after issue is not the same as
+a 55 year old at issue.</p></li>
+<li><p><strong>Age-related mortality effect:</strong> It’s no surprise that as we get older, there
+is an increased mortality rate. Our bodies wear-down over time, so this effect
+is another major consideration</p></li>
+</ul>
+</div>
+<div id="inferential-models" class="section level3 hasAnchor" number="3.3.2">
+<h3><span class="header-section-number">3.3.2</span> Inferential models<a href="data-analysis-inferential-modeling.html#inferential-models" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>The risk of mis-attributing a rise in the mortality rate to a correlated predictor,
+is lowered when we allow a model to help us decide which predictor is best.<br />
+We still need to apply good judgement, and our knowledge of the context of the data
+in deciding if we believe the model.</p>
+</div>
+</div>
+<div id="technical-tools-decision-trees" class="section level2 hasAnchor" number="3.4">
+<h2><span class="header-section-number">3.4</span> Technical Tools: Decision Trees<a href="data-analysis-inferential-modeling.html#technical-tools-decision-trees" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Decision trees are very easy to interpret, making them an excellent tool for
+communication. Although we’ll look at the outputs of the trees, it’s wise
+to manually convert the output to tabular form if you are communicating your
+findings to stakeholders.</p>
+<p>We built two data frames earlier in this section, one for perm business, the
+other of ULSG (Universal Life with Secondary Guarantees). We discussed our
+reasons for treating this business separately above.</p>
+<p>Before applying a decision tree to the Perm dataframe, let’s see how our
+expected basis lines up with the actual number of deaths. We are using the
+2008 VBT because the 2017 VBT is actually built on this data.</p>
+<div id="actual-to-expected-plot" class="section level3 hasAnchor" number="3.4.1">
+<h3><span class="header-section-number">3.4.1</span> Actual-to-Expected Plot<a href="data-analysis-inferential-modeling.html#actual-to-expected-plot" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>To get a sense of the fit the provided by the expected basis, we’ll examine
+both the overall A/E ratio and the ratio at each age and gender. One problem
+with using the overall A/E ratio alone is that errors can cancel out. If one
+part of the expected curve is over-predicting deaths, and the other is under-predicting,
+you can end up with ratio close to 100%. Its important to examine both the ratio
+and the curve to ensure you are not misled. We see some of this canceling out of
+errors in the below plot, note that the curve dips under 90% for between ages 50
+and 70, but the overall A/E of 93% doesn’t convey the extent of the misfit.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="data-analysis-inferential-modeling.html#cb7-1" tabindex="-1"></a>ae_plot_data <span class="ot">&lt;-</span> df_perm <span class="sc">%&gt;%</span></span>
+<span id="cb7-2"><a href="data-analysis-inferential-modeling.html#cb7-2" tabindex="-1"></a>  <span class="fu">group_by</span>(Attained_Age, Gender) <span class="sc">%&gt;%</span></span>
+<span id="cb7-3"><a href="data-analysis-inferential-modeling.html#cb7-3" tabindex="-1"></a>  <span class="fu">filter</span>(Expected_Death_QX2008VBT_by_Policy <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-4"><a href="data-analysis-inferential-modeling.html#cb7-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb7-5"><a href="data-analysis-inferential-modeling.html#cb7-5" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Number_Of_Deaths),</span>
+<span id="cb7-6"><a href="data-analysis-inferential-modeling.html#cb7-6" tabindex="-1"></a>    <span class="st">`</span><span class="at">Expected (08 VBT)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Expected_Death_QX2008VBT_by_Policy),</span>
+<span id="cb7-7"><a href="data-analysis-inferential-modeling.html#cb7-7" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb7-8"><a href="data-analysis-inferential-modeling.html#cb7-8" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb7-9"><a href="data-analysis-inferential-modeling.html#cb7-9" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb7-10"><a href="data-analysis-inferential-modeling.html#cb7-10" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="sc">&gt;=</span> <span class="dv">30</span></span>
+<span id="cb7-11"><a href="data-analysis-inferential-modeling.html#cb7-11" tabindex="-1"></a>  )</span>
+<span id="cb7-12"><a href="data-analysis-inferential-modeling.html#cb7-12" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="data-analysis-inferential-modeling.html#cb7-13" tabindex="-1"></a><span class="fu">ggplot</span>(ae_plot_data, <span class="fu">aes</span>(<span class="at">x =</span> Attained_Age, <span class="at">y=</span><span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span> <span class="sc">/</span> <span class="st">`</span><span class="at">Expected (08 VBT)</span><span class="st">`</span>,</span>
+<span id="cb7-14"><a href="data-analysis-inferential-modeling.html#cb7-14" tabindex="-1"></a>                    <span class="at">color=</span>Gender)) <span class="sc">+</span></span>
+<span id="cb7-15"><a href="data-analysis-inferential-modeling.html#cb7-15" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">se=</span>F) <span class="sc">+</span></span>
+<span id="cb7-16"><a href="data-analysis-inferential-modeling.html#cb7-16" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">percent_format</span>(),</span>
+<span id="cb7-17"><a href="data-analysis-inferential-modeling.html#cb7-17" tabindex="-1"></a>                     <span class="at">transform =</span> scales<span class="sc">::</span><span class="fu">pseudo_log_trans</span>()) <span class="sc">+</span></span>
+<span id="cb7-18"><a href="data-analysis-inferential-modeling.html#cb7-18" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb7-19"><a href="data-analysis-inferential-modeling.html#cb7-19" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb7-20"><a href="data-analysis-inferential-modeling.html#cb7-20" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Actual / Expected&quot;</span>) <span class="sc">+</span></span>
+<span id="cb7-21"><a href="data-analysis-inferential-modeling.html#cb7-21" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Attained Age&quot;</span>) <span class="sc">+</span></span>
+<span id="cb7-22"><a href="data-analysis-inferential-modeling.html#cb7-22" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="fu">sprintf</span>(</span>
+<span id="cb7-23"><a href="data-analysis-inferential-modeling.html#cb7-23" tabindex="-1"></a>    <span class="st">&quot;Actual-to-Expected Ratio: %d%%&quot;</span>,</span>
+<span id="cb7-24"><a href="data-analysis-inferential-modeling.html#cb7-24" tabindex="-1"></a>    (<span class="fu">round</span>(<span class="dv">100</span><span class="sc">*</span></span>
+<span id="cb7-25"><a href="data-analysis-inferential-modeling.html#cb7-25" tabindex="-1"></a>      <span class="fu">sum</span>(ae_plot_data<span class="sc">$</span><span class="st">`</span><span class="at">Total Deaths</span><span class="st">`</span>) <span class="sc">/</span> <span class="fu">sum</span>(ae_plot_data<span class="sc">$</span><span class="st">`</span><span class="at">Expected (08 VBT)</span><span class="st">`</span>),<span class="dv">0</span>))), </span>
+<span id="cb7-26"><a href="data-analysis-inferential-modeling.html#cb7-26" tabindex="-1"></a>    <span class="st">&quot;Perm Business: By Age &amp; Gender&quot;</span>)</span></code></pre></div>
+<pre><code>## `geom_smooth()` using method = &#39;loess&#39; and formula = &#39;y ~ x&#39;</code></pre>
+<p><img src="ailc-docs_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+<div id="decision-tree" class="section level3 hasAnchor" number="3.4.2">
+<h3><span class="header-section-number">3.4.2</span> Decision Tree<a href="data-analysis-inferential-modeling.html#decision-tree" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>We’ve confirmed that the fit can be better using the above graph, but where is
+the best place to start? Step-wise regression is one option, but a decision tree
+will likely give you the same answer for the first predictor, with the added benefit
+of immediate interpretability. Unlike step-wise regression, a decision tree can
+give us some insights about <em>interactions</em>, where two predictors need to be considered
+in tandem.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="data-analysis-inferential-modeling.html#cb9-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;rpart&quot;</span>)) {</span>
+<span id="cb9-2"><a href="data-analysis-inferential-modeling.html#cb9-2" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;rpart&quot;</span>)</span>
+<span id="cb9-3"><a href="data-analysis-inferential-modeling.html#cb9-3" tabindex="-1"></a>  <span class="fu">library</span>(rpart)</span>
+<span id="cb9-4"><a href="data-analysis-inferential-modeling.html#cb9-4" tabindex="-1"></a>}</span></code></pre></div>
+<pre><code>## Loading required package: rpart</code></pre>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="data-analysis-inferential-modeling.html#cb11-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;rpart.plot&quot;</span>)) {</span>
+<span id="cb11-2"><a href="data-analysis-inferential-modeling.html#cb11-2" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;rpart.plot&quot;</span>)</span>
+<span id="cb11-3"><a href="data-analysis-inferential-modeling.html#cb11-3" tabindex="-1"></a>  <span class="fu">library</span>(rpart.plot)</span>
+<span id="cb11-4"><a href="data-analysis-inferential-modeling.html#cb11-4" tabindex="-1"></a>}</span></code></pre></div>
+<pre><code>## Loading required package: rpart.plot</code></pre>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="data-analysis-inferential-modeling.html#cb13-1" tabindex="-1"></a>prep_rpart_data <span class="ot">&lt;-</span> <span class="cf">function</span>(df) {</span>
+<span id="cb13-2"><a href="data-analysis-inferential-modeling.html#cb13-2" tabindex="-1"></a>  df <span class="sc">%&gt;%</span> </span>
+<span id="cb13-3"><a href="data-analysis-inferential-modeling.html#cb13-3" tabindex="-1"></a>    <span class="fu">filter</span>(Expected_Death_QX2008VBT_by_Policy <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-4"><a href="data-analysis-inferential-modeling.html#cb13-4" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>Amount_Exposed, </span>
+<span id="cb13-5"><a href="data-analysis-inferential-modeling.html#cb13-5" tabindex="-1"></a>           <span class="sc">-</span>Death_Claim_Amount, </span>
+<span id="cb13-6"><a href="data-analysis-inferential-modeling.html#cb13-6" tabindex="-1"></a>           <span class="sc">-</span>Policies_Exposed,</span>
+<span id="cb13-7"><a href="data-analysis-inferential-modeling.html#cb13-7" tabindex="-1"></a>           <span class="sc">-</span>Age_Basis) </span>
+<span id="cb13-8"><a href="data-analysis-inferential-modeling.html#cb13-8" tabindex="-1"></a>}</span>
+<span id="cb13-9"><a href="data-analysis-inferential-modeling.html#cb13-9" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="data-analysis-inferential-modeling.html#cb13-10" tabindex="-1"></a>remove_response_vars <span class="ot">&lt;-</span> <span class="cf">function</span>(df) {</span>
+<span id="cb13-11"><a href="data-analysis-inferential-modeling.html#cb13-11" tabindex="-1"></a>  df <span class="sc">%&gt;%</span></span>
+<span id="cb13-12"><a href="data-analysis-inferential-modeling.html#cb13-12" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>Number_Of_Deaths, </span>
+<span id="cb13-13"><a href="data-analysis-inferential-modeling.html#cb13-13" tabindex="-1"></a>           <span class="sc">-</span>Expected_Death_QX2008VBT_by_Policy)</span>
+<span id="cb13-14"><a href="data-analysis-inferential-modeling.html#cb13-14" tabindex="-1"></a>}</span>
+<span id="cb13-15"><a href="data-analysis-inferential-modeling.html#cb13-15" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="data-analysis-inferential-modeling.html#cb13-16" tabindex="-1"></a>df_rpart <span class="ot">&lt;-</span> df_perm <span class="sc">%&gt;%</span></span>
+<span id="cb13-17"><a href="data-analysis-inferential-modeling.html#cb13-17" tabindex="-1"></a>  <span class="fu">prep_rpart_data</span>()</span>
+<span id="cb13-18"><a href="data-analysis-inferential-modeling.html#cb13-18" tabindex="-1"></a></span>
+<span id="cb13-19"><a href="data-analysis-inferential-modeling.html#cb13-19" tabindex="-1"></a><span class="co"># build the decision tree</span></span>
+<span id="cb13-20"><a href="data-analysis-inferential-modeling.html#cb13-20" tabindex="-1"></a>rpart_perm <span class="ot">&lt;-</span> <span class="fu">rpart</span>(</span>
+<span id="cb13-21"><a href="data-analysis-inferential-modeling.html#cb13-21" tabindex="-1"></a>  <span class="fu">as.matrix</span>(df_rpart[, <span class="fu">c</span>(<span class="st">&quot;Expected_Death_QX2008VBT_by_Policy&quot;</span>, <span class="st">&quot;Number_Of_Deaths&quot;</span>)]) <span class="sc">~</span> .,</span>
+<span id="cb13-22"><a href="data-analysis-inferential-modeling.html#cb13-22" tabindex="-1"></a>  <span class="at">data =</span> df_rpart <span class="sc">%&gt;%</span> <span class="fu">remove_response_vars</span>(),</span>
+<span id="cb13-23"><a href="data-analysis-inferential-modeling.html#cb13-23" tabindex="-1"></a>  <span class="at">control =</span> <span class="fu">rpart.control</span>(</span>
+<span id="cb13-24"><a href="data-analysis-inferential-modeling.html#cb13-24" tabindex="-1"></a>    <span class="at">cp =</span> <span class="fl">0.001</span>,</span>
+<span id="cb13-25"><a href="data-analysis-inferential-modeling.html#cb13-25" tabindex="-1"></a>    <span class="at">maxdepth =</span> <span class="dv">3</span></span>
+<span id="cb13-26"><a href="data-analysis-inferential-modeling.html#cb13-26" tabindex="-1"></a>  )</span>
+<span id="cb13-27"><a href="data-analysis-inferential-modeling.html#cb13-27" tabindex="-1"></a>)</span>
+<span id="cb13-28"><a href="data-analysis-inferential-modeling.html#cb13-28" tabindex="-1"></a></span>
+<span id="cb13-29"><a href="data-analysis-inferential-modeling.html#cb13-29" tabindex="-1"></a><span class="fu">rpart.plot</span>(rpart_perm, <span class="at">digits=</span><span class="dv">3</span>)</span></code></pre></div>
+<p><img src="ailc-docs_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+</div>
+<div id="intuition-what-is-rpart-doing" class="section level2 hasAnchor" number="3.5">
+<h2><span class="header-section-number">3.5</span> Intuition: What is rpart doing?<a href="data-analysis-inferential-modeling.html#intuition-what-is-rpart-doing" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="intro.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="methods.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/mma-fsa/ailc-web/edit/master/02-ilec-data.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": ["ailc-docs.pdf", "ailc-docs.epub"],
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/latest.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+</body>
+
+</html>

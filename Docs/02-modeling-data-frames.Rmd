@@ -1,0 +1,372 @@
+# Modeling Dataframes
+
+## Overview
+
+In this section, the focus is on preparing data for modeling.  First, we'll
+extract subsets from the ILEC parquet file. Next, we'll build some models to
+aid our data analysis. This technique is called *inferential modeling*.
+
+## Technical Tools: Working with DuckDB
+
+```{r message=F, warning=F}
+
+if (!require("duckdb")) {
+  install.packages("duckdb")
+  library(duckdb)
+}
+
+if (!require("tidyverse")) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+
+if (!require("knitr")) {
+  install.packages("knitr")
+  library(knitr)
+}
+
+# remove any existing connections, if they exist
+if (exists("duckdb_conn")) {
+  duckdb::duckdb_shutdown(duckdb_conn@driver)
+  duckdb::dbDisconnect(duckdb_conn)
+  rm(duckdb_conn)
+}
+
+# create a connection for duckdb
+duckdb_conn <- duckdb::dbConnect(duckdb::duckdb(), ":memory:");
+
+# set this to match your system's available memory
+suppressMessages({
+  ignore_result <- DBI::dbExecute(duckdb_conn, "SET memory_limit = '4GB'")
+})
+
+# point this to the parquet file built in the last chapter 
+ILEC_PQ_FILEPATH <- "/mnt/data/ilec/ilec_2009_19_20210528.parquet"
+
+tbl_ilec_data <- tbl(duckdb_conn,
+                     sprintf("read_parquet('%s')", ILEC_PQ_FILEPATH))
+
+# print an exposures and death summary, note that the code is
+# exactly the same as the standard tidyverse syntax, except for
+# the call to collect(), which is explained later.
+tbl_ilec_data %>%
+  group_by(Observation_Year) %>%
+  summarise(
+    `Total Exposures` = sum(Policies_Exposed, na.rm=T),
+    `Total Deaths` = sum(Number_Of_Deaths, na.rm=T)
+  ) %>%
+  collect() %>%
+  kable(caption = "ILEC 2017 Data Summary")
+
+
+```
+
+We'll prepare two modeling data frames, based on the product type and the 
+number of underwriting classes.  Let's tabulate the exposures by the number of
+preferred underwriting classes and insurance plan (product type).  These are important
+considerations for the following reasons:
+
+* **Number of Preferred Classes:** Insurers want to match the mortality risk of 
+policyholders with the amount that the product costs.  This is accomplished
+through underwriting, where assessments of the policyholders' health determines
+if they are eligible for a policy and also cheaper premiums by belonging to a 
+*preferred class* where the mortality risk is lower than other policyholders. If
+there is a large number of preferred classes, there is likely more extensive underwriting.
+If there is no preferred classes, the insurer may still charge different rates to
+smokers.
+
+* **Insurance Plan:** People buy life insurance for different reasons. Some products
+have a *savings component*, where the policyholder might rationally choose to 
+end their coverage in exchange for payment from the insurer based on the policy's
+*cash value*.  Generally, *Perm* products fall into this category. There is a 
+special type of product called *ULSG*, where the cash value is much smaller,
+resulting in fewer policyholders ending their coverage each year.  
+These products have different mortality characteristics due to differences
+in the target market and policyholder behavior, so we should develop distinct 
+mortality rates.
+
+
+```{r}
+
+tbl_ilec_data %>%
+  group_by(Insurance_Plan, Number_Of_Preferred_Classes, Smoker_Status) %>%
+  filter(Insurance_Plan %in% c("ULSG", "Perm")) %>%
+  summarise(
+    `Total Exposure` = sum(Policies_Exposed),
+    `Total Deaths` = sum(Number_Of_Deaths)
+  ) %>%
+  arrange(
+    Insurance_Plan,
+    Number_Of_Preferred_Classes,
+    Smoker_Status
+  ) %>%
+  collect() %>%
+  kable(caption = "Perm & ULSG Credibility, by UW Class",
+        align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+
+```
+</div>
+
+
+```{r}
+
+# helper function to only extract the columns that we need for modeling
+subset_cols <- function(df) {
+  df %>% select(
+    Observation_Year:Number_Of_Preferred_Classes, 
+    Expected_Death_QX2008VBT_by_Policy,
+    Number_Of_Deaths:Amount_Exposed)
+}
+
+fix_factors <- function(df) {
+  df %>%
+    mutate(
+      Face_Amount = factor(Face_Amount),
+      Face_Amount = forcats::fct_recode(
+        Face_Amount,
+        `<10K` = "1-9999",
+        `10K-24K`="10000-24999",
+        `25K-49K`="25000-49999",
+        `50K-99K`="50000-99999",
+        `100K-249K`="100000-249999",
+        `250K-499K`="250000-499999",
+        `500K-999K`="5000000-9999999",
+        `1M-2.49M`="1000000-2499999",
+        `2.5M-4.99M`="2500000-4999999",
+        `5M-9.99M`="5000000-9999999",
+        `10M+`="10000000+"
+      )
+    )
+}
+
+df_perm <- tbl_ilec_data %>%
+  filter(Insurance_Plan == "Perm", 
+         Number_Of_Preferred_Classes == 2,
+         Smoker_Status %in% c("Smoker", "NonSmoker")) %>%
+  subset_cols() %>%
+  collect()
+
+df_ulsg <- tbl_ilec_data %>%
+  filter(Insurance_Plan == "ULSG",
+         Number_Of_Preferred_Classes == 0,
+         Smoker_Status %in% c("Smoker", "NonSmoker")) %>%
+  subset_cols() %>%
+  collect()
+
+bind_rows(df_perm, df_ulsg) %>%
+  group_by(Insurance_Plan, Number_Of_Preferred_Classes, Smoker_Status) %>%
+  summarise(
+    `Total Exposure` = sum(Policies_Exposed),
+    `Total Deaths` = sum(Number_Of_Deaths),
+    .groups = "drop"
+  ) %>%
+  arrange(
+    Insurance_Plan,
+    Number_Of_Preferred_Classes,
+    Smoker_Status
+  ) %>%
+  collect() %>%
+  kable(caption = "Perm & ULSG Credibility, Modeling Subset",
+        align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+
+```
+
+## Intuition: Train / Test Split
+
+The nuance of how best to split your testing and training is underappreciated.
+Most data scientists are rotely taught to split their data something like 70/30, with the 
+larger chunk going to the training data. If we were to apply this rule to mortality data,
+both sets contain the same calendar years. The performance on the testing set is **not**
+an indicator of how the model performs on future years, instead it indicates how well 
+the model performs on unseen policies during the same time period. 
+
+Actuaries and insurance companies typically build mortality models with future years 
+in mind.  A valid approach to test set selection is to segment the experience by unseen
+years, reserving the most recent years for the testing set. This allows us to identify
+at least two important drivers in the data, and possibly a third depending on the 
+nature of the underlying data.
+
+1. **Mortality Improvement:** Advances in medical treatment, health-conscious lifestypes,
+and the declining prevalence of smoking have increased life expectancies in the U.S.
+If we use calendar year holdouts in our testing set, and note that we are systematically
+over-predicting deaths in the holdout years, an adjustment to the model or data to
+provide for mortality improvement might be necessary.
+
+2. **Annual Effects:** In the older population (70+), flu-seasons can create 
+noticeable fluctuations in mortality. The COVID pandemic exacerbated this problem,
+with increased deaths in middle and older ages due to the disease itself, and 
+rising accidental or substance-abuse related deaths in younger populations.
+
+3. **Business Mix:** The ILEC data is aggregated from many companies. It possible
+that some companies only contributed data to certain years.  Company-specific data
+may include geographic or socio-economic differences that noticably impact mortality.
+If the makeup of the underlying policies, with respect to these differences, is changing
+substantially over time, it's important to have a safeguard that we are not overfitting
+to a business mix that occurred in the past. This consideration is quite relevant to 
+reinsurers.
+
+One way to apply this concept practically is to look at the cumulative exposure,
+and select the first 60%-70% of the data when ordered by calendar year.  Note that 
+the substantial change in exposure (for only 62.5K deaths) indicates there might
+be some business mix shifts occurring.
+
+```{r}
+
+df_perm %>%
+  group_by(Observation_Year) %>%
+  summarise(
+    `CY Exposure` = sum(Policies_Exposed),
+    .groups = "drop"
+  ) %>%
+  arrange(Observation_Year) %>%
+  mutate(
+    `Cumulative Exposure` = round(100*cumsum(`CY Exposure`) / sum(`CY Exposure`),0),
+    `Cumulative Exposure` = paste0(`Cumulative Exposure`, "%"),
+    Observation_Year = as.character(Observation_Year)
+  ) %>%
+  kable(caption="Cumulative Exposure, by Calendar Year", 
+         align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+
+```
+
+In the above data, the testing set would be years 2016-18.
+
+To reiterate, there is nothing stopping you from applying calendar year test set
+selection alongside the traditional approach. The final model should be fit using
+all years of experience (including those reserved for the testing set).  The
+primary advantage of this approach for choosing predictors and model structure
+that doesn't attempt to follow one-off events too closely.  A similar concept
+can also be applied for cross-validation, where each fold consists of a single
+calendar year.
+
+## Technical Tools: RSample
+
+The `rsample` library is a part of the `tidymodels` metapackage, and
+provides several different sampling strategies. The calendar year method we 
+described above is a form of *rolling cross-validation* used for time-series data. 
+
+### Traditional Train / Test Split
+
+When working with smaller data sets, like the ULSG dataframe, its wise to 
+apply some form of stratification.  We'll use gender and age groups (10 year)
+increments to maintain balance in both training and testing, so that one 
+split is not over-representative.
+
+```{r}
+
+if (!require("tidymodels")) {
+  install.packages("tidymodels")
+  library("tidymodels")
+}
+
+create_strata <- function(df) {
+  df %>%
+    mutate(
+      age_group = round(Attained_Age / 10, 0),
+      stratum = interaction(age_group, Gender)
+    ) 
+}
+
+train_test_perm_trad <- rsample::initial_split(
+  create_strata(df_perm),
+  prop=0.70,
+  strata=stratum
+)
+
+# modify the dataframe to denote the training records
+df_perm <- df_perm %>% mutate(training_set = 0)
+df_perm[train_test_perm_trad$in_id, "training_set"] <- 1
+
+
+train_test_uslg_trad <- rsample::initial_split(
+  create_strata(df_ulsg),
+  prop=0.70,
+  pool=0.001,
+  strata=stratum
+)
+
+df_ulsg <- df_ulsg %>% mutate(training_set = 0) 
+df_ulsg[train_test_uslg_trad$in_id, "training_set"] <- 1 
+
+bind_rows(
+  df_perm,
+  df_ulsg) %>% 
+  mutate(`Set Name` = ifelse(training_set == 1, "Train", "Test")) %>%
+  group_by(Insurance_Plan, `Set Name`) %>%
+  summarise(
+    `Total Exposure` = sum(Policies_Exposed),
+    `Total Deaths` = sum(Number_Of_Deaths),
+    .groups="drop"
+  ) %>%
+  kable(caption="Train/Test Split Overview",
+         align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+
+  
+  
+```
+
+### Calendar Year Train / Test Split
+
+This process is manual, although it could be automated by starting at the 
+latest year and walking back one year at a time until the testing set execeeds
+the desired proportion of exposure.  We'll use a table to inform our holdout
+year selection.
+
+```{r}
+
+bind_rows(df_perm, df_ulsg) %>%
+  group_by(Insurance_Plan, Observation_Year) %>%
+  summarise(
+    total_expos = sum(Policies_Exposed),
+    .groups = "drop"
+  ) %>%
+  group_by(Insurance_Plan) %>%
+  arrange(Observation_Year) %>%
+  mutate(
+    pct_expos = paste0(round(100*cumsum(total_expos) / sum(total_expos), 0), "%"),
+  ) %>%
+  select(Insurance_Plan, Observation_Year, pct_expos) %>%
+  pivot_wider(
+    id_cols=Observation_Year, names_from=Insurance_Plan,
+    values_from = pct_expos
+  ) %>%
+  kable(caption="Cumulative Exposure: By Insurance Plan and Observation Year",
+         align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+  
+
+```
+
+Reserving years 2016+ as holdout years creates an approximately 70/30 split.
+
+```{r}
+
+df_perm <- df_perm %>% 
+  mutate(training_year = ifelse(Observation_Year < 2016, 1, 0))
+
+df_ulsg <- df_ulsg %>%
+  mutate(training_year = ifelse(Observation_Year < 2016, 1, 0))
+  
+```
+
+Finally, we'll save these dataframes in R's native format.  We could also store
+it as a parquet, but since size and portability isn't a concern, we'll just use
+the RDS format.
+
+
+```{r}
+
+write_rds(
+  df_perm, "../Data/df_perm.rds"
+)
+
+write_rds(
+  df_ulsg, "../Data/df_ulsg.rds"
+)
+
+```
+
