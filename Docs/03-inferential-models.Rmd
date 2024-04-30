@@ -245,7 +245,7 @@ remove_response_vars <- function(df) {
            -Expected_Death_QX2008VBT_by_Policy)
 }
 
-df_rpart <- df_perm %>%
+df_rpart <- df_perm.train %>%
   prep_rpart_data()
 
 # build the decision tree
@@ -322,7 +322,7 @@ prep_rpart_data_face_amount <- function(df) {
         ordered=T))
 }
 
-df_rpart <- df_perm %>%
+df_rpart <- df_perm.train %>%
   prep_rpart_data() %>%
   prep_rpart_data_face_amount()
 
@@ -344,5 +344,54 @@ Notice that 10M+ now appears at the end of the first split.
 
 ## Intuition: What is rpart doing?
 
+To get a better idea of how rpart works, we need to revisit the Poisson distribution.
+The algorithm works something like this:
 
+1. For each variable, find the best split.
+
+2. With the best splits for each variable, find the best split overall.
+
+3. Split the data and repeat
+
+Simple, right?  Let's break those steps down into more detail.
+
+### Step 1: Best split for each variable
+
+In deciding where to split each variable, we need to evaluate each possible
+split. But how do we decis
+
+
+```{r}
+
+possible_splits_df <- tibble(
+  split_location = levels(df_rpart$Face_Amount_Band)
+)
+
+eval_splits <- df_perm.train %>%
+  prep_rpart_data_face_amount() %>%
+  filter(Expected_Death_QX2008VBT_by_Policy > 0) %>%
+  cross_join(possible_splits_df) %>%
+  mutate(split_direction = ifelse(Face_Amount_Band < split_location,
+                                  "Right", "Left")) %>%
+  group_by(split_location, split_direction) %>%
+  summarise(
+    actual_deaths = sum(Number_Of_Deaths),
+    expected_deaths = sum(Expected_Death_QX2008VBT_by_Policy),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    poisson_loss = dpois(actual_deaths, expected_deaths, log=T),
+    split_location = factor(split_location,
+        levels=c("<10K","10-24K","25-49K","50-99K","100-249K","250-499K",
+                 "500-999K","1-2.49M","2.5-4.99M","5-9.99M","10M+"),
+        ordered=T))
+  
+  
+ggplot(eval_splits, aes(x=split_location, y=poisson_loss, color=split_direction, group=split_direction)) +
+  geom_line() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  )
+
+```
 
