@@ -122,19 +122,19 @@ subset_cols <- function(df) {
 fix_factors <- function(df) {
   df %>%
     mutate(
-      Face_Amount = factor(Face_Amount),
-      Face_Amount = forcats::fct_recode(
-        Face_Amount,
+      Face_Amount_Band = factor(Face_Amount_Band),
+      Face_Amount_Band = forcats::fct_recode(
+        Face_Amount_Band,
         `<10K` = "1-9999",
-        `10K-24K`="10000-24999",
-        `25K-49K`="25000-49999",
-        `50K-99K`="50000-99999",
-        `100K-249K`="100000-249999",
-        `250K-499K`="250000-499999",
-        `500K-999K`="5000000-9999999",
-        `1M-2.49M`="1000000-2499999",
-        `2.5M-4.99M`="2500000-4999999",
-        `5M-9.99M`="5000000-9999999",
+        `10-24K`="10000-24999",
+        `25-49K`="25000-49999",
+        `50-99K`="50000-99999",
+        `100-249K`="100000-249999",
+        `250-499K`="250000-499999",
+        `500-999K`="500000-999999",
+        `1-2.49M`="1000000-2499999",
+        `2.5-4.99M`="2500000-4999999",
+        `5-9.99M`="5000000-9999999",
         `10M+`="10000000+"
       )
     )
@@ -145,14 +145,16 @@ df_perm <- tbl_ilec_data %>%
          Number_Of_Preferred_Classes == 2,
          Smoker_Status %in% c("Smoker", "NonSmoker")) %>%
   subset_cols() %>%
-  collect()
+  collect() %>%
+  fix_factors()
 
 df_ulsg <- tbl_ilec_data %>%
   filter(Insurance_Plan == "ULSG",
          Number_Of_Preferred_Classes == 0,
          Smoker_Status %in% c("Smoker", "NonSmoker")) %>%
   subset_cols() %>%
-  collect()
+  collect() %>%
+  fix_factors()
 
 bind_rows(df_perm, df_ulsg) %>%
   group_by(Insurance_Plan, Number_Of_Preferred_Classes, Smoker_Status) %>%
@@ -280,6 +282,8 @@ train_test_perm_trad <- rsample::initial_split(
 df_perm <- df_perm %>% mutate(training_set = 0)
 df_perm[train_test_perm_trad$in_id, "training_set"] <- 1
 
+# make the train / test split deterministic (reproducible)
+set.seed(123)
 
 train_test_uslg_trad <- rsample::initial_split(
   create_strata(df_ulsg),
@@ -357,8 +361,7 @@ Finally, we'll save these dataframes in R's native format.  We could also store
 it as a parquet, but since size and portability isn't a concern, we'll just use
 the RDS format.
 
-
-```{r}
+```{r eval=FALSE}
 
 write_rds(
   df_perm, "../Data/df_perm.rds"

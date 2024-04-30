@@ -1,0 +1,348 @@
+# Inferential Models
+
+## Overview
+
+* First, we'll discussion the intuition behind inferential modeling, which is 
+the first step in our data analysis. 
+
+## Technical Tools: Loading RDS data
+
+We stored our modeling dataframes in one of R's native format called an RDS file.
+The alternative is an .RData.  RDS files are preferred when we are storing a single
+dataframe, whereas .RData can be used to save multiple objects stored in R's environment.
+Generally, I like to store modeling dataframes as RDS files when they are small,
+parquet files when they are large (>2 GB), and I use .RData files to create snapshots
+at the end of modeling to ensure future reproducability.  We'll see an example of
+saving an .RData in the modeling chapter.
+
+```{r setup}
+
+if (!require("tidyverse")) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+
+df_prem <- read_rds("../Data/df_perm.rds")
+df_perm.train <- df_prem %>% filter(training_set == 1)
+
+df_ulsg <- read_rds("../Data/df_ulsg.rds")
+df_ulsg.train <- df_ulsg %>% filter(training_set == 1)
+
+bind_rows(df_perm, df_ulsg) %>% 
+  group_by(Insurance_Plan, training_set) %>%
+  summarise(
+    `Number of Exposures` = sum(Policies_Exposed),
+    `Actual Deaths` = sum(Number_Of_Deaths),
+    `Expected Deaths` = sum(Expected_Death_QX2008VBT_by_Policy),
+    `A/E Ratio` = paste0(round(100*`Actual Deaths` / `Expected Deaths`, 0), "%")
+  ) %>%
+  kable(caption="Check Modeling Dataframes",
+         align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+  
+  
+```
+
+## Intuition: Why inferential models?
+
+Inferential models are essential to understanding our data.  You may be wondering,
+why not visualize the data first with plots?  In my opinion, *starting* with visualizations can 
+be misleading due to correlations between predictors. We'll look at some examples of this
+in this section. Inferential models are not a replacement for visualization, but
+instead guide you to productive visualizations, that will be valuable in later
+modeling work.
+
+### Correlations
+
+To see why starting with visualizations can lead you astray, let's pick two predictors that are obviously
+correlated: attained age and duration.  Using the `df_perm` dataframe we built in the
+preceding section, the correlation coefficient is `r round(cor(df_perm$Duration, df_perm$Attained_Age), 2)`. 
+Although they are correlated, there are two distinct actuarial considerations here: the selection
+period wear-off, and the age-related mortality effect, defined as follows:
+
+* **Selection Period Wear-off:** When you buy individual life insurance, there
+is usually some form of underwriting.  It may be as simple as a questionnaire about
+your health, or as involved as blood-tests or an exam by a physician. The insurer
+has some assurances that the insured has some level of health, but as time goes on,
+the relevance of the health assessment at duration 1 diminishes. For this reason, 
+the expected mortality rate of a 55 year old 10 years after issue is not the same as 
+a 55 year old at issue.
+
+* **Age-related mortality effect:** It's no surprise that as we get older, there
+is an increased mortality rate.  Our bodies wear-down over time, so this effect
+is another major consideration 
+
+### A/E Plot: Attained Age
+
+Let's dig deeper into the example of how plots can mislead by looking at 
+the A/E ratio at each age and gender. Plots are most helpful when we see
+systematic over-prediction or under-prediction.  If a model (or expected basis)
+is a good fit, then the A/E ratio should bounce randomly around 100% (black line),
+but this is not the case in the below plot.
+
+```{r}
+
+ae_plot_data <- df_perm.train %>%
+  group_by(Attained_Age, Gender) %>%
+  filter(Expected_Death_QX2008VBT_by_Policy > 0) %>%
+  summarise(
+    `Total Deaths` = sum(Number_Of_Deaths),
+    `Expected (08 VBT)` = sum(Expected_Death_QX2008VBT_by_Policy),
+    .groups = "drop"
+  ) %>%
+  filter(
+    `Total Deaths` >= 30
+  )
+
+ggplot(ae_plot_data, aes(x = Attained_Age, y=`Total Deaths` / `Expected (08 VBT)`,
+                    color=Gender)) +
+  geom_smooth(se=F) +
+  scale_y_continuous(labels = scales::percent_format(),
+                     transform = scales::pseudo_log_trans()) +
+  geom_hline(yintercept = 1) +
+  theme_bw() +
+  ylab("Actual / Expected") +
+  xlab("Attained Age") +
+  ggtitle(sprintf(
+    "Actual-to-Expected Ratio: %d%%",
+    (round(100*
+      sum(ae_plot_data$`Total Deaths`) / sum(ae_plot_data$`Expected (08 VBT)`),0))), 
+    "Perm Business: By Age & Gender")
+
+```
+
+We definitely have a trend in the above plot.  For females, we are under-predicting
+deaths at up until about age 45, and then over-predicting between 45 and 85. Since
+the pattern for males is different, we might consider *both* sex and attained age
+jointly in our model, this is called an *interaction variable*.  You can think
+about an interaction as a table with one row for each age, and one column for each gender,
+with each cell containing the adjustment necessary to adjust the expected basis closer
+to actuals.
+
+| Attained Age | Male | Female | 
+|--------------|------|--------|
+| 30           | 1.05 | 0.8    |
+| ....         | .... | ....   |
+| 98           | 0.9  | 0.86   |
+
+The simpler alternative to an interaction is to model the factors *independently*,
+which is equivalent to having two tables: one with each attained age, and one with each 
+gender.  This only works if the male and female curves have the same shape, but are 
+shifted by a constant amount, for example:
+
+| Attained Age | $q_x$ Multiplier |
+|--------------|------------------|
+| 30           | 1.01             |
+|....          | ....             |
+| 98           | 0.88             |
+
+| Sex   | $q_x$ Multiplier |
+|-----  |------------------|
+| Male  | 0.92             |
+| Female| 0. 95            |
+
+After looking at the different patterns in the above plot, which seem to vary
+*both* by attained age and gender (not by a parallel shift), an interaction
+between sex and attained age looks like a strong possibility.
+
+### A/E Plot: Duration
+
+We saw that duration is moderately correlated with attained age, so we should
+expect to see trends in the A/E ratio when that variable is plotted.  
+
+```{r}
+
+ae_plot_data <- df_perm %>%
+  group_by(Duration, Gender) %>%
+  filter(Expected_Death_QX2008VBT_by_Policy > 0) %>%
+  summarise(
+    `Total Deaths` = sum(Number_Of_Deaths),
+    `Expected (08 VBT)` = sum(Expected_Death_QX2008VBT_by_Policy),
+    .groups = "drop"
+  ) %>%
+  filter(
+    `Total Deaths` >= 30
+  )
+
+ggplot(ae_plot_data, aes(x = Duration, y=`Total Deaths` / `Expected (08 VBT)`,
+                    color=Gender)) +
+  geom_smooth(se=F) +
+  scale_y_continuous(labels = scales::percent_format(),
+                     transform = scales::pseudo_log_trans()) +
+  geom_hline(yintercept = 1) +
+  theme_bw() +
+  ylab("Actual / Expected") +
+  xlab("Duration Age") +
+  ggtitle(sprintf(
+    "Actual-to-Expected Ratio: %d%%",
+    (round(100*
+      sum(ae_plot_data$`Total Deaths`) / sum(ae_plot_data$`Expected (08 VBT)`),0))), 
+    "Perm Business: By Age & Duration")
+
+
+```
+
+Since there is again a trend, as expected, it's possible that duration is a component
+of the mismatch.  Alternatively, we could just be seeing the *effects* of the duration
+mismatch on the attained age plot, or vice-versa.  By looking at the plots alone, 
+it's hard to determine which correlated variable *best* explains the mismatch.
+
+### Inferential models
+
+In the next section, we'll see exactly how inferental models help us to uncover
+complex patterns in the data, and answer the question if both variables are necessary.
+We still need to apply good judgement, and our knowledge of the context of the data
+in deciding how to interpret the insights from inferential models.
+
+## Technical Tools: Decision Trees
+
+Decision trees are the first inferential model we'll examine.  The biggest advantage
+is their ease of interpretation, making them an excellent tool for 
+communication.  Although we'll look at the outputs of the trees, it's wise
+to manually convert the output to tabular form if you are communicating your
+findings to stakeholders, at least until they get comfortable with the technique.
+
+### Poisson Decision Tree
+
+To continue our exploration of correlated predictors and picking the more
+explanatory variable, a decision tree is an excellent tool.  We'll use a 
+special type of decision tree that uses the Poisson distribution, so its
+results will align well with our GLM modeling later.
+
+Decision trees need some criterion to determine the *most explanatory* variable
+at each level of the tree.  The top of the tree show the variable the best
+partitions the data. But what does "best" mean in this context?  When we use
+the Poisson distribution, it finds the *most credible split of the data that creates the largest A/E difference*.  
+In other words, it find the biggest two chunks of data that it can find that have
+the biggest A/E difference.  It's easy to find a large A/E difference by zeroing in on
+a small (non-credible) portion of the data, and it's easy to find two large chunks of the data,
+but it's remarkable that the Poisson distribution can achieve both simultaneously.
+
+```{r}
+
+if (!require("rpart")) {
+  install.packages("rpart")
+  library(rpart)
+}
+
+if (!require("rpart.plot")) {
+  install.packages("rpart.plot")
+  library(rpart.plot)
+}
+
+prep_rpart_data <- function(df) {
+  df %>% 
+    filter(Expected_Death_QX2008VBT_by_Policy > 0) %>%
+    select(-Amount_Exposed, 
+           -Death_Claim_Amount, 
+           -Policies_Exposed,
+           -Age_Basis) 
+}
+
+remove_response_vars <- function(df) {
+  df %>%
+    select(-Number_Of_Deaths, 
+           -Expected_Death_QX2008VBT_by_Policy)
+}
+
+df_rpart <- df_perm %>%
+  prep_rpart_data()
+
+# build the decision tree
+rpart_perm <- rpart(
+  as.matrix(df_rpart[, c("Expected_Death_QX2008VBT_by_Policy", "Number_Of_Deaths")]) ~ .,
+  data = df_rpart %>% remove_response_vars(),
+  control = rpart.control(
+    cp = 0.001,
+    maxdepth = 3
+  )
+)
+
+rpart.plot(rpart_perm, digits=3)
+
+```
+
+The decision tree indicates that indeed both variables are necessary, but more importantly,
+that the most predictive variable, which always is shown at the top of the tree, is the
+face amount band.  The output of face amounts is a bit clunky, but we'll address this later. A careful
+reading shows that the first split is on policies <\$100K and >=\$100K.
+
+To help us understand the above plot, let's recreate it as two tables.  Match the last row of the 
+above plot to the data.  Note that the number of deaths is shown in scientific notation in the plot
+(e.g., 17.8e+3).
+
+**Face Amounts >=100K** 
+
+| Attained Age | % of rows in split | Number of Deaths in split | A/E Ratio in split | 
+|--------------|--------------------|---------------------------|--------------------|
+| <83          | 49.2%              |  17,800                   |  72.4%             |
+| >=83         | 3.5%               |  7,093                    |  97.1%             |
+
+**Face Amounts <100K**
+
+| Duration     | % of rows in split | Number of Deaths in split | A/E Ratio in split | 
+|--------------|--------------------|---------------------------|--------------------|
+| >=20         |  14.4%             | 21,600                    | 97.4%              |
+| <20          |  32.8%             | 16,100                    | 120%               |
+
+If you read the above plot carefully, you might notice that the decision tree 
+lumped $10M+ policies in with the <\$100K.  Let's look at the credibility of this
+cell before deciding what to do.
+
+```{r}
+
+df_perm.train %>%
+  filter(Face_Amount_Band == "10M+") %>%
+  summarise(
+    `Number of Exposures` = sum(Policies_Exposed),
+    `Actual Deaths` = sum(Number_Of_Deaths),
+    `Expected Deaths` = sum(Expected_Death_QX2008VBT_by_Policy),
+    `A/E Ratio` = paste0(round(100*`Actual Deaths` / `Expected Deaths`, 0), "%")
+  ) %>%
+  kable(caption="10M+ Experience",
+         align = "c", format.args = list(big.mark = ","), digits = 0) %>%
+  kableExtra::kable_styling()
+  
+```
+
+This is a *spurious* split of the data, but it's easy to rectify by telling
+the decision tree that it can't "cherry-pick" face amounts.  Specifying the 
+Face_Amount_Band as an ordered factor forces the decision tree to split so that
+all smaller face amounts go to the left, and all larger go to the right (no cherry-picking).
+The output is much easier to interpret too.
+
+```{r}
+
+prep_rpart_data_face_amount <- function(df) {
+  df %>%
+    mutate(
+      Face_Amount_Band = factor(Face_Amount_Band,
+        levels=c("<10K","10-24K","25-49K","50-99K","100-249K","250-499K",
+                 "500-999K","1-2.49M","2.5-4.99M","5-9.99M","10M+"),
+        ordered=T))
+}
+
+df_rpart <- df_perm %>%
+  prep_rpart_data() %>%
+  prep_rpart_data_face_amount()
+
+# build the decision tree
+rpart_perm <- rpart(
+  as.matrix(df_rpart[, c("Expected_Death_QX2008VBT_by_Policy", "Number_Of_Deaths")]) ~ .,
+  data = df_rpart %>% remove_response_vars(),
+  control = rpart.control(
+    cp = 0.001,
+    maxdepth = 3
+  )
+)
+
+rpart.plot(rpart_perm, digits=3)
+
+```
+
+Notice that 10M+ now appears at the end of the first split.
+
+## Intuition: What is rpart doing?
+
+
+
